@@ -305,8 +305,8 @@ export default function VisitForm({
           {/* Visual Map context */}
           <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-100 shadow-inner relative group">
             <DynamicMap 
-              center={coords ? [coords.lat, coords.lng] : [-1.2921, 36.8219]}
-              zoom={coords ? 16 : 13}
+              center={coords ? [coords.lat, coords.lng] : getPolygonCenter(targetPolygon)}
+              zoom={coords || targetPolygon ? 16 : 13}
               polygons={mapPolygons}
               markers={mapMarkers}
             />
