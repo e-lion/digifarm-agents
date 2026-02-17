@@ -24,7 +24,7 @@ export function RouteList({ userId }: { userId: string }) {
       .select('*')
       .eq('agent_id', userId)
       .order('status', { ascending: false })
-      .order('scheduled_date', { ascending: true })
+      .order('scheduled_date', { ascending: false })
       .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1)
 
     if (statusFilter !== 'all') {
