@@ -53,10 +53,10 @@ export default function CreateVisitForm() {
         return
     }
 
-    // Convert point [lat, lng] to 1km radius circle polygon
+    // Convert point [lat, lng] to 100m radius circle polygon
     // turf circle uses [lng, lat]
     const center = point([selectedPoint[1], selectedPoint[0]])
-    const circularPolygon = circle(center, 1, { units: 'kilometers', steps: 64 })
+    const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
 
     const { error } = await supabase.from('visits').insert({
       agent_id: user.id,

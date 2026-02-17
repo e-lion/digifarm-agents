@@ -88,7 +88,7 @@ export default function RadiusEditor({ onChange }: RadiusEditorProps) {
             <Marker position={point} />
             <Circle 
               center={point} 
-              radius={1000} 
+              radius={100} 
               pathOptions={{ 
                 color: '#16a34a', 
                 fillColor: '#16a34a', 
