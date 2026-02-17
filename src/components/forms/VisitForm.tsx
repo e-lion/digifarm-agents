@@ -118,6 +118,7 @@ export default function VisitForm({
                   zoom={16}
                   polygons={summaryPolygons}
                   markers={summaryMarkers}
+                  hideLocate={true}
                 />
              </div>
           </CardContent>

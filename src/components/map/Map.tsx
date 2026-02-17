@@ -29,6 +29,7 @@ interface MapProps {
   polygons?: { id: string; coords: [number, number][]; color?: string; name?: string }[]
   markers?: { id: string; position: [number, number]; popup?: string }[]
   className?: string
+  hideLocate?: boolean
 }
 
 function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
@@ -129,7 +130,14 @@ function LocateControl() {
   )
 }
 
-export default function Map({ center = [-1.2921, 36.8219], zoom = 13, polygons = [], markers = [], className }: MapProps) {
+export default function Map({ 
+  center = [-1.2921, 36.8219], 
+  zoom = 13, 
+  polygons = [], 
+  markers = [], 
+  className,
+  hideLocate = false
+}: MapProps) {
   return (
     <MapContainer 
       center={center} 
@@ -143,7 +151,7 @@ export default function Map({ center = [-1.2921, 36.8219], zoom = 13, polygons =
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapUpdater center={center} zoom={zoom} />
-      <LocateControl />
+      {!hideLocate && <LocateControl />}
       {polygons.map((poly) => (
         <Polygon key={poly.id} positions={poly.coords} pathOptions={{ color: poly.color || 'blue' }}>
            {poly.name && <Popup>{poly.name}</Popup>}
