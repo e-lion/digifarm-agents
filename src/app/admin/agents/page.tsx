@@ -16,6 +16,29 @@ export default async function AgentsPage() {
     .eq('role', 'agent')
     .order('full_name', { ascending: true })
 
+  // Fetch whitelisted emails (moved back)
+  const { data: agents } = await supabase
+    .from('profile_access')
+    .select('*')
+    .eq('role', 'agent')
+    .order('created_at', { ascending: false })
+
+  async function addAgent(formData: FormData) {
+    'use server'
+    const email = formData.get('email') as string
+    if (!email) return
+
+    const supabase = await createClient()
+    const { error } = await supabase.from('profile_access').insert({ email, role: 'agent' })
+    
+    if (error) {
+        console.error('Failed to add agent:', error)
+        // In a real app, return extraction to show toast
+    } else {
+        revalidatePath('/admin/agents')
+    }
+  }
+
   // Calculate metrics
   const agentsWithMetrics = agentStats?.map(agent => {
     const totalVisits = agent.visits.length
