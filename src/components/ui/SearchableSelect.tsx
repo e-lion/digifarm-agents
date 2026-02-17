@@ -100,7 +100,7 @@ export function SearchableSelect({
 
         {/* Dropdown Menu */}
         {open && (
-          <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-[260px] overflow-hidden rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute left-0 right-0 top-full z-[9999] mt-2 max-h-[260px] overflow-hidden rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-200">
             <CommandList className="max-h-[210px] overflow-y-auto overflow-x-hidden pt-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
               <CommandEmpty className="py-6 text-center text-sm text-gray-500">
                 No value chains found.

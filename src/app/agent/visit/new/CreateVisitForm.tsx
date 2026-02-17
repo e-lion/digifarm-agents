@@ -84,7 +84,7 @@ export default function CreateVisitForm() {
              <Input name="buyer_name" required placeholder="e.g. Upcountry Millers" />
           </div>
           
-          <div className="z-50 relative">
+          <div className="relative">
              <label className="block text-sm font-medium text-gray-700 mb-1">Value Chains</label>
              <SearchableSelect 
                options={KENYAN_VALUE_CHAINS} 
