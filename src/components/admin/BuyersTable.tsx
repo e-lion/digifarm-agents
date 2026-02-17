@@ -1,65 +1,95 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { BuyerWithStats } from '@/lib/actions/buyers'
+import { BuyerWithStats, getBuyers } from '@/lib/actions/buyers'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { Search, Download, ChevronLeft, ChevronRight, User, Building2, MapPin, Phone } from 'lucide-react'
 
 interface BuyersTableProps {
-  initialBuyers: BuyerWithStats[]
+  buyers: BuyerWithStats[]
+  totalCount: number
+  currentPage: number
+  itemsPerPage: number
+  currentSearch: string
 }
 
-export default function BuyersTable({ initialBuyers }: BuyersTableProps) {
-  const [buyers, setBuyers] = useState<BuyerWithStats[]>(initialBuyers)
-  const [search, setSearch] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 8 // Slightly reduced for better visual spacing
+export default function BuyersTable({ 
+  buyers, 
+  totalCount, 
+  currentPage, 
+  itemsPerPage, 
+  currentSearch 
+}: BuyersTableProps) {
+  const router = useRouter()
+  const [searchTerm, setSearchTerm] = useState(currentSearch)
+  const [isExporting, setIsExporting] = useState(false)
 
-  // Filter logic
-  const filteredBuyers = buyers.filter(buyer => 
-    buyer.name.toLowerCase().includes(search.toLowerCase()) ||
-    buyer.contact_name?.toLowerCase().includes(search.toLowerCase()) ||
-    buyer.county?.toLowerCase().includes(search.toLowerCase()) ||
-    buyer.value_chain?.toLowerCase().includes(search.toLowerCase())
-  )
+  // Sync internal state with URL params if they change externally (e.g. back button)
+  useEffect(() => {
+    setSearchTerm(currentSearch)
+  }, [currentSearch])
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredBuyers.length / itemsPerPage)
-  const paginatedBuyers = filteredBuyers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  // Debounced search effect
+  useEffect(() => {
+    if (searchTerm === currentSearch) return
 
-  const handleExport = () => {
-    // CSV Export
-    const headers = ['Name', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Count', 'Agent Names', 'Last Visited']
-    const csvContent = [
-      headers.join(','),
-      ...filteredBuyers.map(b => [
-        `"${b.name}"`,
-        `"${b.contact_name || ''}"`,
-        `"${b.phone || ''}"`,
-        `"${b.value_chain || ''}"`,
-        `"${b.business_type || ''}"`,
-        `"${b.county || ''}"`,
-        b.agent_count,
-        `"${b.agent_names.join(', ')}"`,
-        b.last_visited ? new Date(b.last_visited).toLocaleDateString() : ''
-      ].join(','))
-    ].join('\n')
+    const delayDebounceFn = setTimeout(() => {
+      router.push(`?page=1&size=${itemsPerPage}&search=${encodeURIComponent(searchTerm)}`)
+    }, 500)
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'buyers_export.csv')
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchTerm, currentSearch, itemsPerPage, router])
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage)
+
+  const handlePageChange = (newPage: number) => {
+    router.push(`?page=${newPage}&size=${itemsPerPage}&search=${encodeURIComponent(currentSearch)}`)
+  }
+
+  const handlePageSizeChange = (newSize: number) => {
+    router.push(`?page=1&size=${newSize}&search=${encodeURIComponent(currentSearch)}`)
+  }
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+        // Fetch all matching buyers for export
+        const { buyers: allBuyers } = await getBuyers(1, 10000, currentSearch)
+        
+        // CSV Export
+        const headers = ['Name', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Count', 'Agent Names', 'Last Visited']
+        const csvContent = [
+        headers.join(','),
+        ...allBuyers.map(b => [
+            `"${b.name}"`,
+            `"${b.contact_name || ''}"`,
+            `"${b.phone || ''}"`,
+            `"${b.value_chain || ''}"`,
+            `"${b.business_type || ''}"`,
+            `"${b.county || ''}"`,
+            b.agent_count,
+            `"${b.agent_names.join(', ')}"`,
+            b.last_visited ? new Date(b.last_visited).toLocaleDateString() : ''
+        ].join(','))
+        ].join('\n')
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', 'buyers_export.csv')
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    } catch (error) {
+        console.error("Export failed", error)
+    } finally {
+        setIsExporting(false)
+    }
   }
 
   return (
@@ -71,14 +101,19 @@ export default function BuyersTable({ initialBuyers }: BuyersTableProps) {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input 
                     placeholder="Search buyers by name, county, or value chain..." 
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 h-10 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
                 />
             </div>
-            <Button onClick={handleExport} variant="outline" className="flex items-center gap-2 h-10 border-gray-200 text-gray-700 hover:text-green-700 hover:border-green-200 hover:bg-green-50">
+            <Button 
+                onClick={handleExport} 
+                disabled={isExporting}
+                variant="outline" 
+                className="flex items-center gap-2 h-10 border-gray-200 text-gray-700 hover:text-green-700 hover:border-green-200 hover:bg-green-50"
+            >
                 <Download className="h-4 w-4" />
-                Export Data
+                {isExporting ? 'Exporting...' : 'Export Data'}
             </Button>
         </CardContent>
       </Card>
@@ -98,7 +133,7 @@ export default function BuyersTable({ initialBuyers }: BuyersTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {paginatedBuyers.length === 0 ? (
+              {buyers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-400 bg-gray-50/30">
                     <div className="flex flex-col items-center gap-2">
@@ -108,7 +143,7 @@ export default function BuyersTable({ initialBuyers }: BuyersTableProps) {
                   </td>
                 </tr>
               ) : (
-                paginatedBuyers.map((buyer) => (
+                buyers.map((buyer) => (
                   <tr key={buyer.id} className="hover:bg-gray-50/80 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -169,17 +204,33 @@ export default function BuyersTable({ initialBuyers }: BuyersTableProps) {
           </table>
         </div>
         
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/30">
-            <div className="text-sm text-gray-500">
-              Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredBuyers.length)}</span> of <span className="font-medium">{filteredBuyers.length}</span> buyers
+        {/* Pagination & Page Size */}
+        {totalCount > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/30 gap-4">
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <span>Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalCount)}</span> of <span className="font-medium">{totalCount}</span></span>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400">|</span>
+                <span className="text-gray-500">Rows per page:</span>
+                <select 
+                    value={itemsPerPage}
+                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    className="h-8 w-16 rounded border-gray-200 text-xs focus:ring-green-500 focus:border-green-500"
+                >
+                    <option value={8}>8</option>
+                    <option value={16}>16</option>
+                    <option value={32}>32</option>
+                    <option value={64}>64</option>
+                </select>
+              </div>
             </div>
+
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 className="h-8 w-8 p-0"
               >
@@ -188,7 +239,7 @@ export default function BuyersTable({ initialBuyers }: BuyersTableProps) {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="h-8 w-8 p-0"
               >

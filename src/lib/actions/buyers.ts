@@ -15,31 +15,55 @@ export interface BuyerWithStats {
   last_visited: string | null
 }
 
-export async function getBuyers(): Promise<{ buyers: BuyerWithStats[], error: string | null }> {
+export async function getBuyers(
+  page: number = 1,
+  pageSize: number = 10,
+  search: string = ''
+): Promise<{ 
+  buyers: BuyerWithStats[], 
+  totalCount: number,
+  error: string | null 
+}> {
   const supabase = await createClient()
 
   try {
-    // 1. Fetch all buyers
-    const { data: buyers, error: buyersError } = await supabase
+    // 1. Fetch filtered and paginated buyers
+    let query = supabase
       .from('buyers')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('name')
+
+    if (search) {
+      const searchPattern = `%${search}%`
+      query = query.or(`name.ilike.${searchPattern},contact_name.ilike.${searchPattern},county.ilike.${searchPattern},value_chain.ilike.${searchPattern}`)
+    }
+
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    const { data: buyers, count, error: buyersError } = await query.range(from, to)
 
     if (buyersError) throw buyersError
 
-    // 2. Fetch all visits to aggregate stats (grouped by buyer_name)
-    // We could do this with a more complex SQL query or RPC, but this is fine for now
-    const { data: visits, error: visitsError } = await supabase
-      .from('visits')
-      .select('buyer_name, agent_id, created_at, profiles(full_name, email)')
-      .order('created_at', { ascending: false })
+    // 2. Fetch visits ONLY for the fetched buyers to aggregate stats
+    const buyerNames = buyers.map(b => b.name)
+    
+    let visits: any[] = []
+    if (buyerNames.length > 0) {
+        const { data: visitsData, error: visitsError } = await supabase
+        .from('visits')
+        .select('buyer_name, agent_id, created_at, profiles(full_name, email)')
+        .in('buyer_name', buyerNames)
+        .order('created_at', { ascending: false })
 
-    if (visitsError) throw visitsError
+        if (visitsError) throw visitsError
+        visits = visitsData
+    }
 
     // 3. Aggregate stats
     const buyerStats = new Map<string, { agents: Set<string>, lastVisit: string | null }>()
 
-    visits?.forEach(visit => {
+    visits.forEach(visit => {
       if (!visit.buyer_name) return
       
       const stats = buyerStats.get(visit.buyer_name) || { agents: new Set(), lastVisit: null }
@@ -68,9 +92,10 @@ export async function getBuyers(): Promise<{ buyers: BuyerWithStats[], error: st
       }
     })
 
-    return { buyers: result, error: null }
+    return { buyers: result, totalCount: count || 0, error: null }
   } catch (e: any) {
     console.error('Error fetching buyers:', e)
-    return { buyers: [], error: e.message }
+    return { buyers: [], totalCount: 0, error: e.message }
   }
 }
+

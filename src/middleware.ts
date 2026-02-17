@@ -42,14 +42,26 @@ export async function middleware(request: NextRequest) {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, first_name, last_name, phone_number')
         .eq('id', user.id)
         .single()
+
+      if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
 
       if (profile?.role === 'admin') {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url))
       }
       return NextResponse.redirect(new URL('/agent/routes', request.url))
+    }
+    return response
+  }
+
+  // Onboarding path
+  if (path.startsWith('/onboarding')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/', request.url))
     }
     return response
   }
@@ -63,9 +75,13 @@ export async function middleware(request: NextRequest) {
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, first_name, last_name, phone_number')
       .eq('id', user.id)
       .single()
+
+    if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
+       return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
 
     if (path.startsWith('/admin') && profile?.role !== 'admin') {
       return NextResponse.redirect(new URL('/agent/routes', request.url))
