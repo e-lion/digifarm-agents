@@ -107,7 +107,8 @@ export default function CreateVisitForm() {
                 type="date" 
                 required 
                 min={new Date().toISOString().split('T')[0]}
-                className="pl-11 h-12 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 [appearance:none] [&::-webkit-calendar-picker-indicator]:hidden"
+                onClick={(e) => (e.target as any).showPicker?.()}
+                className="pl-11 h-12 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer [appearance:none] [&::-webkit-calendar-picker-indicator]:hidden"
                />
              </div>
           </div>
