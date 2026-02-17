@@ -79,7 +79,8 @@ export function RouteList({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       {/* Filters Section */}
-      <Card className="bg-white sticky top-16 z-30 shadow-sm border-gray-100">
+      <div className="sticky top-[53px] z-30 bg-gray-50/95 backdrop-blur-sm -mx-4 px-4 py-2 mb-4">
+        <Card className="bg-white shadow-md border-gray-100">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
             <Filter className="h-4 w-4 text-green-600" />
@@ -120,6 +121,7 @@ export function RouteList({ userId }: { userId: string }) {
           </div>
         </CardContent>
       </Card>
+    </div>
 
       {/* List Section */}
       <div className="space-y-4">
