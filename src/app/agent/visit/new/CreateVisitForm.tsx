@@ -85,12 +85,12 @@ export default function CreateVisitForm() {
           </div>
           
           <div className="z-50 relative">
-             <label className="block text-sm font-medium text-gray-700 mb-1">Value Chain</label>
+             <label className="block text-sm font-medium text-gray-700 mb-1">Value Chains</label>
              <SearchableSelect 
                options={KENYAN_VALUE_CHAINS} 
                value={valueChain} 
                onChange={setValueChain} 
-               placeholder="Search crops..."
+               placeholder="Search value chains..."
              />
              <input type="hidden" name="value_chain" value={valueChain} />
           </div>
@@ -104,9 +104,9 @@ export default function CreateVisitForm() {
 
       <Card>
         <CardContent className="pt-6">
-           <label className="block text-sm font-medium text-gray-700 mb-2">Location Center (1km Radius)</label>
+           <label className="block text-sm font-medium text-gray-700 mb-2">Location Center (100m Radius)</label>
            <RadiusEditor onChange={setSelectedPoint} />
-           <p className="text-xs text-gray-500 mt-2">Tap the map to set the center. A 1km radius will automaticallly be applied.</p>
+           <p className="text-xs text-gray-500 mt-2">Tap the map to set the center. A 100m radius will automaticallly be applied.</p>
         </CardContent>
       </Card>
 

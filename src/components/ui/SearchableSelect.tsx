@@ -79,7 +79,7 @@ export function SearchableSelect({
             <div className="flex items-center border-b border-gray-50 px-3 pb-2 pt-1">
               <Search className="mr-2 h-4 w-4 shrink-0 text-gray-400" />
               <CommandInput
-                placeholder="Search value chains..."
+                placeholder={placeholder}
                 className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
               />
               {open && (

@@ -208,7 +208,7 @@ export default function VisitForm({
                    <p className="font-medium">{initialData.phone}</p>
                 </div>
                 <div>
-                   <label className="text-xs text-gray-500 uppercase">Value Chain</label>
+                   <label className="text-xs text-gray-500 uppercase">Value Chains</label>
                    <p className="font-medium">{initialData.value_chain}</p>
                 </div>
                 <div>
@@ -421,12 +421,12 @@ export default function VisitForm({
               </div>
 
               <div className="z-50 relative">
-                <label className="text-sm font-medium text-gray-700">Value Chain</label>
+                <label className="text-sm font-medium text-gray-700">Value Chains</label>
                 <SearchableSelect 
                    options={KENYAN_VALUE_CHAINS}
                    value={valueChain} 
                    onChange={(val) => setValue('value_chain', val, { shouldValidate: true })}
-                   placeholder="Search..."
+                   placeholder="Search value chains..."
                 />
                 {/* Hidden input to register with react-hook-form if needed, but setValue handles it */}
                 <input type="hidden" {...register('value_chain')} />
