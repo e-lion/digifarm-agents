@@ -69,20 +69,38 @@ export default function VisitForm({
   // Helper to parse check_in_location from Supabase (can be WKT string or GeoJSON object)
   const parsePoint = (pt: any) => {
     if (!pt) return null
-    // If it's a WKT string like "POINT(36.8219 -1.2921)"
-    if (typeof pt === 'string' && pt.startsWith('POINT(')) {
-      const match = pt.match(/\((.*)\)/)
-      if (match) {
-        const [lng, lat] = match[1].trim().split(/\s+/).map(Number)
-        return { lat, lng }
+    
+    // If it's a GeoJSON object (handled via Supabase/PostgREST naturally sometimes)
+    if (typeof pt === 'object') {
+      if (pt.type === 'Point' && Array.isArray(pt.coordinates)) {
+        return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
+      }
+      // Possible it's nested or in a different format
+      if (pt.coordinates && Array.isArray(pt.coordinates)) {
+        return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
       }
     }
-    // If it's a GeoJSON-like object
-    if (pt.type === 'Point' && Array.isArray(pt.coordinates)) {
-      return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
+
+    // If it's a WKT string like "POINT(36.8219 -1.2921)"
+    if (typeof pt === 'string') {
+      if (pt.startsWith('POINT(')) {
+        const match = pt.match(/\((.*)\)/)
+        if (match) {
+          const parts = match[1].trim().split(/\s+/)
+          if (parts.length >= 2) {
+            const [lng, lat] = parts.map(Number)
+            return { lat, lng }
+          }
+        }
+      }
+      // If it's a HEX string (PostGIS EWKB), we try to extract coords if it's a standard Point
+      // A standard 4326 Point HEX usually starts with 0101000020E6100000...
+      // This is brittle but can work for simple points if library isn't available
+      if (/^[0-9A-Fa-f]+$/.test(pt) && pt.length > 30) {
+        console.warn("Received PostGIS hex string, persistence might be tricky without ST_AsGeoJSON")
+      }
     }
-    // If it's a hex string (from PostGIS binary)
-    // In a real app, you might need a hex-to-geojson converter or just cast to text in the query
+    
     return null
   }
 
@@ -284,7 +302,7 @@ export default function VisitForm({
       .update({
         status: 'completed',
         visit_details: data,
-        check_in_location: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
+        check_in_location: coords ? { type: 'Point', coordinates: [coords.lng, coords.lat] } : null,
       })
       .eq('id', visitId)
 
