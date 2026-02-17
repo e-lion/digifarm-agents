@@ -10,7 +10,7 @@ export default async function AgentsPage() {
   const { data: agentStats } = await supabase
     .from('profiles')
     .select('*, visits(status)')
-    .eq('role', 'agent')
+    .neq('role', 'admin') // Fetch everyone except admins
     .order('full_name', { ascending: true })
 
   // Fetch whitelisted emails (moved back)
