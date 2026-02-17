@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { Card, CardContent } from '@/components/ui/Card'
-import { PolygonEditor } from '@/components/map/DynamicPolygonEditor'
+import { RadiusEditor } from '@/components/map/DynamicRadiusEditor'
+import circle from '@turf/circle'
+import { point } from '@turf/helpers'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export default function CreateVisitForm() {
   const [loading, setLoading] = useState(false)
-  const [polygon, setPolygon] = useState<[number, number][]>([])
+  const [selectedPoint, setSelectedPoint] = useState<[number, number] | null>(null)
   const router = useRouter()
   
   const [valueChain, setValueChain] = useState("")
@@ -36,8 +38,8 @@ export default function CreateVisitForm() {
         return
     }
 
-    if (polygon.length < 3) {
-      alert('Please define a valid area (at least 3 points)')
+    if (!selectedPoint) {
+      alert('Please drop a pin to define the area')
       setLoading(false)
       return
     }
@@ -51,21 +53,17 @@ export default function CreateVisitForm() {
         return
     }
 
-    // GeoJSON polygon format: [[[lng, lat], [lng, lat], ...]] (closed loop)
-    // Leaflet gives [lat, lng]
-    const coordinates = polygon.map(p => [p[1], p[0]])
-    // Close the loop
-    coordinates.push(coordinates[0])
+    // Convert point [lat, lng] to 1km radius circle polygon
+    // turf circle uses [lng, lat]
+    const center = point([selectedPoint[1], selectedPoint[0]])
+    const circularPolygon = circle(center, 1, { units: 'kilometers', steps: 64 })
 
     const { error } = await supabase.from('visits').insert({
       agent_id: user.id,
       buyer_name: buyerName,
       scheduled_date: date,
       status: 'planned',
-      polygon_coords: {
-        type: 'Polygon',
-        coordinates: [coordinates]
-      }
+      polygon_coords: circularPolygon.geometry
     })
 
     if (error) {
@@ -106,9 +104,9 @@ export default function CreateVisitForm() {
 
       <Card>
         <CardContent className="pt-6">
-           <label className="block text-sm font-medium text-gray-700 mb-2">Location Area</label>
-           <PolygonEditor onChange={setPolygon} />
-           <p className="text-xs text-gray-500 mt-2">Tap at least 3 points to define the buyer's area.</p>
+           <label className="block text-sm font-medium text-gray-700 mb-2">Location Center (1km Radius)</label>
+           <RadiusEditor onChange={setSelectedPoint} />
+           <p className="text-xs text-gray-500 mt-2">Tap the map to set the center. A 1km radius will automaticallly be applied.</p>
         </CardContent>
       </Card>
 
