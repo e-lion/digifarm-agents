@@ -1,10 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
-
+import { Check, Search, ChevronDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/Button"
 import {
   Command,
   CommandEmpty,
@@ -13,93 +11,122 @@ import {
   CommandItem,
   CommandList,
 } from "cmdk"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/Popover"
 
-// Shim for popover since we don't have Radix Primitives installed yet for Popover
-// Wait, I should probably install radix-popover and cmdk properly or build a simple accessible one.
-// Let's stick to a simple custom implementation if I don't want to install heavier deps, 
-// BUT cmdk is great. I will assume we can install basic radix parts or just build a simple one.
-// Actually, for speed and standard, I'll use a standard HTML datalist or a simple custom div-based one if dependencies are an issue.
-// BUT the user asked for "searchable". 
-// I will build a custom one using standard React state to avoid complex shadcn setup if I haven't set it all up.
-// Actually, let's use a standard Select with search or a filtered list.
+interface SearchableSelectProps {
+  options: string[]
+  value: string
+  onChange: (val: string) => void
+  placeholder?: string
+}
 
 export function SearchableSelect({ 
   options, 
   value, 
   onChange, 
-  placeholder = "Select..." 
-}: { 
-  options: string[], 
-  value: string, 
-  onChange: (val: string) => void,
-  placeholder?: string 
-}) {
+  placeholder = "Select crop..." 
+}: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false)
-  const [search, setSearch] = React.useState("")
-  
-  const filteredOptions = options.filter(opt => 
-    opt.toLowerCase().includes(search.toLowerCase())
-  )
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   return (
-    <div className="relative">
-      <div 
-        className="flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:opacity-50"
+    <div className="relative w-full" ref={containerRef}>
+      {/* Trigger Button */}
+      <button
+        type="button"
         onClick={() => setOpen(!open)}
+        className={cn(
+          "group flex h-12 w-full items-center justify-between rounded-xl border-2 px-4 py-2 transition-all duration-200 outline-none",
+          open 
+            ? "border-green-600 ring-4 ring-green-600/10 bg-white" 
+            : "border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white shadow-sm"
+        )}
       >
-        <span className={value ? "text-gray-900" : "text-gray-500"}>
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors",
+            value ? "bg-green-100 text-green-600" : "bg-gray-200 text-gray-400 group-hover:bg-green-100 group-hover:text-green-500"
+          )}>
+            <Search className="h-3.5 w-3.5" />
+          </div>
+          <span className={cn(
+            "truncate text-sm font-medium transition-colors",
+            value ? "text-gray-900" : "text-gray-400 group-hover:text-gray-500"
+          )}>
             {value || placeholder}
-        </span>
-        <ChevronsUpDown className="h-4 w-4 opacity-50" />
-      </div>
-
-      {open && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-           <div className="sticky top-0 bg-white p-2 border-b">
-              <input 
-                autoFocus
-                className="w-full p-1 text-sm border-none focus:outline-none"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-           </div>
-           {filteredOptions.length === 0 ? (
-             <div className="relative cursor-default select-none py-2 px-4 text-gray-700">No results found.</div>
-           ) : (
-             filteredOptions.map((option) => (
-                <div
-                  key={option}
-                  className={cn(
-                    "relative cursor-default select-none py-2 pl-3 pr-9 hover:bg-green-100 cursor-pointer",
-                    value === option ? "bg-green-50 text-green-900" : "text-gray-900"
-                  )}
-                  onClick={() => {
-                    onChange(option)
-                    setOpen(false)
-                    setSearch("")
-                  }}
-                >
-                  <span className="block truncate">{option}</span>
-                  {value === option && (
-                    <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-green-600">
-                      <Check className="h-4 w-4" />
-                    </span>
-                  )}
-                </div>
-             ))
-           )}
+          </span>
         </div>
-      )}
-      
-      {/* Overlay to close */}
+        <ChevronDown className={cn(
+          "h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200",
+          open && "rotate-180 text-green-600"
+        )} />
+      </button>
+
+      {/* Dropdown Menu */}
       {open && (
-        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+        <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-[300px] overflow-hidden rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200">
+          <Command className="flex h-full flex-col overflow-hidden">
+            <div className="flex items-center border-b border-gray-50 px-3 pb-2 pt-1">
+              <Search className="mr-2 h-4 w-4 shrink-0 text-gray-400" />
+              <CommandInput
+                placeholder="Search value chains..."
+                className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              {open && (
+                <button 
+                  onClick={() => setOpen(false)}
+                  className="ml-2 rounded-full p-1 text-gray-300 hover:bg-gray-50 hover:text-gray-500"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <CommandList className="max-h-[220px] overflow-y-auto overflow-x-hidden pt-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+              <CommandEmpty className="py-6 text-center text-sm text-gray-500">
+                No value chains found.
+              </CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => (
+                  <CommandItem
+                    key={option}
+                    value={option}
+                    onSelect={() => {
+                      onChange(option)
+                      setOpen(false)
+                    }}
+                    className={cn(
+                      "relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm font-medium outline-none transition-colors",
+                      "hover:bg-green-50 hover:text-green-700 data-[selected=true]:bg-green-50 data-[selected=true]:text-green-700",
+                      value === option ? "bg-green-50 text-green-700" : "text-gray-700"
+                    )}
+                  >
+                    <span className="truncate">{option}</span>
+                    {value === option && (
+                      <Check className="ml-auto h-4 w-4 shrink-0 text-green-600" />
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          
+          <div className="mt-2 border-t border-gray-50 pt-2 px-1 pb-1">
+            <p className="text-[10px] text-center text-gray-400 uppercase tracking-widest font-bold">
+               {options.length} Varieties Available
+            </p>
+          </div>
+        </div>
       )}
     </div>
   )
