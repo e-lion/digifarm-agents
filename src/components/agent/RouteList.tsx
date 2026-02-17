@@ -89,31 +89,43 @@ export function RouteList({ userId }: { userId: string }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-wider text-gray-400 font-bold ml-1">Status</label>
-              <select 
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50"
-              >
-                <option value="all">All States</option>
-                <option value="planned">Planned</option>
-                <option value="completed">Completed</option>
-              </select>
+              <div className="relative group">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-green-500 transition-colors pointer-events-none">
+                  <CheckCircle className="h-4 w-4" />
+                </div>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full h-11 pl-9 pr-8 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 outline-none appearance-none text-sm font-medium"
+                >
+                  <option value="all">All States</option>
+                  <option value="planned">Planned</option>
+                  <option value="completed">Completed</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-hover:text-green-600 transition-colors">
+                  <ArrowRight className="h-3.5 w-3.5 rotate-90" />
+                </div>
+              </div>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-wider text-gray-400 font-bold ml-1">Date</label>
-              <div className="relative">
+              <div className="relative group">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-green-500 transition-colors pointer-events-none">
+                  <Calendar className="h-4 w-4" />
+                </div>
                 <Input 
                   type="date"
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-full h-10 bg-gray-50 border-gray-200"
+                  onClick={(e) => (e.target as any).showPicker?.()}
+                  className="w-full h-11 pl-9 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer [appearance:none] [&::-webkit-calendar-picker-indicator]:hidden text-sm font-medium"
                 />
                 {dateFilter && (
                    <button 
                     onClick={() => setDateFilter('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors"
                    >
-                     <X className="h-3 w-3" />
+                     <X className="h-3.5 w-3.5" />
                    </button>
                 )}
               </div>
