@@ -64,6 +64,70 @@ export default function VisitForm({
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
+  // If completed, show summary
+  if (status === 'completed' && initialData) {
+    return (
+      <div className="space-y-6">
+        <Card className="bg-green-50 border-green-200">
+           <CardContent className="pt-6 flex items-center gap-4">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+              <div>
+                <h3 className="font-bold text-green-800">Visit Completed</h3>
+                <p className="text-sm text-green-700">This visit report has been submitted.</p>
+              </div>
+           </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Report Details: {buyerName}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="grid grid-cols-2 gap-4">
+                <div>
+                   <label className="text-xs text-gray-500 uppercase">Contact</label>
+                   <p className="font-medium">{initialData.contact_name}</p>
+                </div>
+                <div>
+                   <label className="text-xs text-gray-500 uppercase">Phone</label>
+                   <p className="font-medium">{initialData.phone}</p>
+                </div>
+                <div>
+                   <label className="text-xs text-gray-500 uppercase">Value Chain</label>
+                   <p className="font-medium">{initialData.value_chain}</p>
+                </div>
+                <div>
+                   <label className="text-xs text-gray-500 uppercase">Farmers</label>
+                   <p className="font-medium">{initialData.active_farmers}</p>
+                </div>
+                 <div>
+                   <label className="text-xs text-gray-500 uppercase">County</label>
+                   <p className="font-medium">{initialData.county}</p>
+                </div>
+                 <div>
+                   <label className="text-xs text-gray-500 uppercase">Business Type</label>
+                   <p className="font-medium">{initialData.agsi_business_type}</p>
+                </div>
+             </div>
+             
+             {initialData.buyer_feedback && (
+               <div className="pt-4 border-t">
+                  <label className="text-xs text-gray-500 uppercase">Feedback</label>
+                  <p className="text-gray-700 mt-1">{initialData.buyer_feedback}</p>
+               </div>
+             )}
+          </CardContent>
+        </Card>
+        
+        <div className="flex justify-center">
+            <Button variant="secondary" onClick={() => router.push('/agent/routes')}>
+                Back to Routes
+            </Button>
+        </div>
+      </div>
+    )
+  }
+
   // Helper to format polygon for our Map component
   const mapPolygons = targetPolygon ? [{
     id: 'target',
