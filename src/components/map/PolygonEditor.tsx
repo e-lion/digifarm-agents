@@ -119,10 +119,10 @@ export default function PolygonEditor({ onChange }: PolygonEditorProps) {
         center={[-1.2921, 36.8219]} 
         zoom={13} 
         style={{ height: '100%', width: '100%' }}
+        attributionControl={false}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap contributors'
         />
         <MapEvents onClick={handleMapClick} />
         
