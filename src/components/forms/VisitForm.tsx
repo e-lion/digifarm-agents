@@ -50,13 +50,15 @@ export default function VisitForm({
   buyerName, 
   targetPolygon,
   initialData,
-  status
+  status,
+  checkInLocation
 }: { 
   visitId: string, 
   buyerName: string, 
   targetPolygon: any,
   initialData?: any,
-  status?: string
+  status?: string,
+  checkInLocation?: any
 }) {
   const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null)
   const [locationChecking, setLocationChecking] = useState(false)
@@ -64,8 +66,35 @@ export default function VisitForm({
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
+  // Helper to parse check_in_location POINT(lng lat)
+  const parsePoint = (pt: any) => {
+    if (typeof pt === 'string' && pt.startsWith('POINT(')) {
+      const match = pt.match(/\((.*)\)/)
+      if (match) {
+        const [lng, lat] = match[1].split(' ').map(Number)
+        return { lat, lng }
+      }
+    }
+    return null
+  }
+
+  const savedCoords = parsePoint(checkInLocation)
+
   // If completed, show summary
   if (status === 'completed' && initialData) {
+    const summaryPolygons = targetPolygon ? [{
+      id: 'target',
+      coords: targetPolygon.coordinates?.[0]?.map((c: any) => [c[1], c[0]]) || targetPolygon[0]?.map((c: any) => [c[1], c[0]]),
+      color: '#16a34a',
+      name: 'Designated Area'
+    }] : []
+
+    const summaryMarkers = savedCoords ? [{
+      id: 'check-in',
+      position: [savedCoords.lat, savedCoords.lng] as [number, number],
+      popup: 'Check-in Location'
+    }] : []
+
     return (
       <div className="space-y-6">
         <Card className="bg-green-50 border-green-200">
@@ -76,6 +105,22 @@ export default function VisitForm({
                 <p className="text-sm text-green-700">This visit report has been submitted.</p>
               </div>
            </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Visit Summary Map</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-100 shadow-inner">
+                <DynamicMap 
+                  center={savedCoords ? [savedCoords.lat, savedCoords.lng] : [-1.2921, 36.8219]}
+                  zoom={16}
+                  polygons={summaryPolygons}
+                  markers={summaryMarkers}
+                />
+             </div>
+          </CardContent>
         </Card>
 
         <Card>

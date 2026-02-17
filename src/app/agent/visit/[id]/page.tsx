@@ -30,6 +30,7 @@ export default async function VisitPage({ params }: { params: Promise<{ id: stri
         targetPolygon={visit.polygon_coords} 
         initialData={visit.visit_details}
         status={visit.status}
+        checkInLocation={visit.check_in_location}
       />
     </AgentLayout>
   )
