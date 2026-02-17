@@ -9,13 +9,15 @@ export default async function AgentsPage() {
   // Get current user to exclude self
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch actual agents and their Stats
-  const { data: agentStats } = await supabase
+  // Fetch all profiles (except self) and filter in JS to include NULL roles
+  const { data: allProfiles } = await supabase
     .from('profiles')
     .select('*, visits(status)')
-    .neq('role', 'admin') // Fetch everyone except admins
-    .neq('id', user?.id) // Exclude current user (admin) even if role is null
+    .neq('id', user?.id) // Exclude current user
     .order('full_name', { ascending: true })
+
+  // Filter out admins (allows 'agent' AND null roles)
+  const agentStats = allProfiles?.filter(p => p.role !== 'admin') || []
 
   // Fetch whitelisted emails (moved back)
   const { data: agents } = await supabase
