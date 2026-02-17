@@ -70,19 +70,19 @@ export default function VisitForm({
   const parsePoint = (pt: any) => {
     if (!pt) return null
     
-    // If it's a GeoJSON object (handled via Supabase/PostgREST naturally sometimes)
+    // If it's a GeoJSON object (sometimes handled via Supabase/PostgREST naturally)
     if (typeof pt === 'object') {
       if (pt.type === 'Point' && Array.isArray(pt.coordinates)) {
         return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
       }
-      // Possible it's nested or in a different format
       if (pt.coordinates && Array.isArray(pt.coordinates)) {
         return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
       }
     }
 
-    // If it's a WKT string like "POINT(36.8219 -1.2921)"
+    // If it's a string (WKT or HEX EWKB)
     if (typeof pt === 'string') {
+      // WKT Handle: POINT(lng lat)
       if (pt.startsWith('POINT(')) {
         const match = pt.match(/\((.*)\)/)
         if (match) {
@@ -93,11 +93,31 @@ export default function VisitForm({
           }
         }
       }
-      // If it's a HEX string (PostGIS EWKB), we try to extract coords if it's a standard Point
-      // A standard 4326 Point HEX usually starts with 0101000020E6100000...
-      // This is brittle but can work for simple points if library isn't available
-      if (/^[0-9A-Fa-f]+$/.test(pt) && pt.length > 30) {
-        console.warn("Received PostGIS hex string, persistence might be tricky without ST_AsGeoJSON")
+      
+      // HEX EWKB Handle (Standard PostGIS return format)
+      // Usually starts with 0101 (Little Endian Point)
+      if (/^[0-9A-Fa-f]+$/.test(pt) && pt.length >= 50) {
+        try {
+          // Point 4326 EWKB: [1 byte endian] [4 bytes type] [4 bytes SRID] [8 bytes X] [8 bytes Y]
+          // Endian (01) + Type (01000020) + SRID (E6100000) = 9 bytes total before coords (18 hex chars)
+          // X starts at char 18 (byte 9), Y starts at char 34 (byte 17)
+          const hexToDouble = (hex: string, le: boolean) => {
+            const bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)))
+            if (!le) bytes.reverse() // Basic handled for big endian if needed
+            const view = new DataView(bytes.buffer)
+            return view.getFloat64(0, true) // Leaflet/PostGIS mostly LE
+          }
+          
+          const isLittleEndian = pt.startsWith('01')
+          const lng = hexToDouble(pt.substring(18, 34), isLittleEndian)
+          const lat = hexToDouble(pt.substring(34, 50), isLittleEndian)
+          
+          if (!isNaN(lat) && !isNaN(lng)) {
+            return { lat, lng }
+          }
+        } catch (e) {
+          console.error("EWKB Parse Error:", e)
+        }
       }
     }
     
@@ -302,7 +322,7 @@ export default function VisitForm({
       .update({
         status: 'completed',
         visit_details: data,
-        check_in_location: coords ? { type: 'Point', coordinates: [coords.lng, coords.lat] } : null,
+        check_in_location: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
       })
       .eq('id', visitId)
 
