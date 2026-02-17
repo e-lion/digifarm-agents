@@ -1,3 +1,5 @@
+'use client'
+
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { LoginView } from '@/components/auth/LoginView'
