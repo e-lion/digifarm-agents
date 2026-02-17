@@ -6,11 +6,15 @@ import { AgentsView } from './AgentsView'
 export default async function AgentsPage() {
   const supabase = await createClient()
   
+  // Get current user to exclude self
+  const { data: { user } } = await supabase.auth.getUser()
+
   // Fetch actual agents and their Stats
   const { data: agentStats } = await supabase
     .from('profiles')
     .select('*, visits(status)')
     .neq('role', 'admin') // Fetch everyone except admins
+    .neq('id', user?.id) // Exclude current user (admin) even if role is null
     .order('full_name', { ascending: true })
 
   // Fetch whitelisted emails (moved back)

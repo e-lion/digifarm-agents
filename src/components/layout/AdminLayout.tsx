@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { LayoutDashboard, Users, Map as MapIcon, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, Map as MapIcon, LogOut, ShoppingBag } from 'lucide-react'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +18,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/agents" className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors">
             <Users className="h-5 w-5" />
             Agents
+          </Link>
+          <Link href="/admin/buyers" className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors">
+            <ShoppingBag className="h-5 w-5" />
+            Buyers
           </Link>
           <Link href="/admin/map" className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors">
             <MapIcon className="h-5 w-5" />

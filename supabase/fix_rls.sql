@@ -1,19 +1,19 @@
--- 1. Ensure RLS is enabled on profile_access for security
-alter table public.profile_access enable row level security;
+-- FIX: Allow Admins to view all profiles (needed for Agent Performance View)
+-- Run this in your Supabase Dashboard > SQL Editor
 
--- 2. Allow users to read their OWN entry in profile_access
--- This allows the callback route (running as the user) to check if they are whitelisted.
-create policy "Users can read own access" on public.profile_access
-  for select using (
-    email = auth.jwt() ->> 'email'
+-- 1. Drop existing policy if it conflicts (optional, safe to run)
+drop policy if exists "Admins can view all profiles" on public.profiles;
+
+-- 2. Create the policy
+-- This allows any user who has role='admin' in their OWN profile row to view ALL rows.
+create policy "Admins can view all profiles" on public.profiles
+  for select
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role = 'admin'
+    )
   );
 
--- 3. Also allow public read if you are debugging (Not recommended for prod, but helps now)
--- OR better: Allow the service role (which we might switch to) or just stick to the above.
-
--- 4. Ensure profiles table allows insert (upsert)
-create policy "Users can insert own profile" on public.profiles
-  for insert with check (auth.uid() = id);
-
-create policy "Users can update own profile" on public.profiles
-  for update using (auth.uid() = id);
+-- 3. Ensure RLS is enabled
+alter table public.profiles enable row level security;
