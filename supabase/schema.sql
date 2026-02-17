@@ -43,7 +43,10 @@ create policy "Users can view own profile" on public.profiles
 create policy "Agents view own visits" on public.visits
   for select using (auth.uid() = agent_id);
 
-create policy "Admins view all visits" on public.visits
-  for select using (
+create policy "Agents update own visits" on public.visits
+  for update using (auth.uid() = agent_id);
+
+create policy "Admins all access visits" on public.visits
+  for all using (
     exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
   );

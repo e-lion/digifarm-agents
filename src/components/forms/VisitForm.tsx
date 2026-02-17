@@ -66,19 +66,39 @@ export default function VisitForm({
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  // Helper to parse check_in_location POINT(lng lat)
+  // Helper to parse check_in_location from Supabase (can be WKT string or GeoJSON object)
   const parsePoint = (pt: any) => {
+    if (!pt) return null
+    // If it's a WKT string like "POINT(36.8219 -1.2921)"
     if (typeof pt === 'string' && pt.startsWith('POINT(')) {
       const match = pt.match(/\((.*)\)/)
       if (match) {
-        const [lng, lat] = match[1].split(' ').map(Number)
+        const [lng, lat] = match[1].trim().split(/\s+/).map(Number)
         return { lat, lng }
       }
     }
+    // If it's a GeoJSON-like object
+    if (pt.type === 'Point' && Array.isArray(pt.coordinates)) {
+      return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
+    }
+    // If it's a hex string (from PostGIS binary)
+    // In a real app, you might need a hex-to-geojson converter or just cast to text in the query
     return null
   }
 
   const savedCoords = parsePoint(checkInLocation)
+
+  // Helper to get center of polygon for map default view
+  const getPolygonCenter = (poly: any): [number, number] => {
+    try {
+      const coords = poly.coordinates?.[0] || poly[0]
+      if (coords && coords.length > 0) {
+        // Return first point as a fallback center
+        return [coords[0][1], coords[0][0]]
+      }
+    } catch (e) {}
+    return [-1.2921, 36.8219] // Nairobi fallback
+  }
 
   // If completed, show summary
   if (status === 'completed' && initialData) {
@@ -95,6 +115,8 @@ export default function VisitForm({
       popup: 'Check-in Location'
     }] : []
 
+    const centerPoint = savedCoords ? [savedCoords.lat, savedCoords.lng] : getPolygonCenter(targetPolygon)
+
     return (
       <div className="space-y-6">
         <Card className="bg-green-50 border-green-200">
@@ -108,19 +130,28 @@ export default function VisitForm({
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Visit Summary Map</CardTitle>
+          <CardHeader className="pb-2 text-center border-b mb-4">
+            <CardTitle className="text-base text-gray-700">Audit Trail: Location Verification</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-100 shadow-inner">
+             <div className="h-72 w-full rounded-2xl overflow-hidden border-4 border-white shadow-lg ring-1 ring-gray-200">
                 <DynamicMap 
-                  center={savedCoords ? [savedCoords.lat, savedCoords.lng] : [-1.2921, 36.8219]}
-                  zoom={16}
+                  center={centerPoint as [number, number]}
+                  zoom={17}
                   polygons={summaryPolygons}
                   markers={summaryMarkers}
                   hideLocate={true}
                 />
              </div>
+             {savedCoords ? (
+               <p className="text-[10px] text-gray-400 mt-2 text-center uppercase tracking-widest font-mono">
+                 GEOREF: {savedCoords.lat.toFixed(6)}, {savedCoords.lng.toFixed(6)}
+               </p>
+             ) : (
+               <p className="text-[10px] text-red-400 mt-2 text-center uppercase tracking-widest">
+                 ⚠️ No check-in location recorded
+               </p>
+             )}
           </CardContent>
         </Card>
 
