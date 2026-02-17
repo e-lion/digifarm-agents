@@ -6,9 +6,13 @@ import QueryProvider from '@/components/providers/QueryProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AgriTech Agent PWA',
-  description: 'Mobile-first PWA for AgriTech sales agents',
+  title: 'DigiFarm Agent',
+  description: 'Mobile-first tool for DigiFarm sales agents',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/icon.png',
+  }
 }
 
 export default function RootLayout({

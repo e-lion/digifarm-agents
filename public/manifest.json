@@ -1,6 +1,6 @@
 {
-  "name": "AgriTech Agent",
-  "short_name": "AgriAgent",
+  "name": "DigiFarm Agent",
+  "short_name": "DigiFarm",
   "description": "Mobile-first tool for agricultural sales agents",
   "start_url": "/agent/routes",
   "display": "standalone",
@@ -8,12 +8,12 @@
   "theme_color": "#15803d",
   "icons": [
     {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
+      "src": "/favicon.png",
+      "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "/icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }

@@ -25,7 +25,7 @@ function LoginContent() {
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
       <div className="w-full max-w-sm space-y-8 bg-white p-8 rounded-xl shadow-lg border border-gray-100">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">AgriTech Agent</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">DigiFarm Agent</h1>
           <p className="text-sm text-gray-500">Sign in to access your dashboard</p>
         </div>
 

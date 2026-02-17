@@ -71,7 +71,7 @@ export default async function ProfilePage() {
         </form>
 
         <div className="text-center pt-8">
-          <p className="text-xs text-gray-400">AgriTech Agent PWA v1.0.0</p>
+          <p className="text-xs text-gray-400">DigiFarm Agent PWA v1.0.0</p>
         </div>
       </div>
     </AgentLayout>

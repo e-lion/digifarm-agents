@@ -8,7 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
         <div className="p-6 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-green-700">AgriTech Admin</h1>
+          <h1 className="text-xl font-bold text-green-700">DigiFarm Admin</h1>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           <Link href="/admin/dashboard" className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors">
