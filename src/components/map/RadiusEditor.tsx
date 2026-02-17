@@ -27,39 +27,71 @@ interface RadiusEditorProps {
 }
 
 function MapEvents({ onClick }: { onClick: (e: L.LeafletMouseEvent) => void }) {
+  const [userLoc, setUserLoc] = useState<[number, number] | null>(null)
+  const [loading, setLoading] = useState(false)
+  
   const map = useMapEvents({
     click: onClick
   })
 
-  useEffect(() => {
-    map.locate().on("locationfound", function (e) {
-      map.flyTo(e.latlng, map.getZoom())
-    })
-  }, [map])
+  const handleLocate = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setLoading(true)
+    
+    map.locate({ setView: true, maxZoom: 16 })
+      .once("locationfound", (ev) => {
+        const { lat, lng } = ev.latlng
+        setUserLoc([lat, lng])
+        setLoading(false)
+      })
+      .once("locationerror", (err) => {
+        console.warn("Leaflet locate failed, trying native...", err)
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords
+            setUserLoc([latitude, longitude])
+            map.flyTo([latitude, longitude], 16)
+            setLoading(false)
+          },
+          (err2) => {
+            console.error("Native locate failed:", err2)
+            setLoading(false)
+          },
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+        )
+      })
+  }
 
   return (
-    <div className="leaflet-bottom leaflet-left" style={{ pointerEvents: 'auto', marginBottom: '20px', marginLeft: '10px', zIndex: 1000 }}>
-      <div className="leaflet-control leaflet-bar">
-        <a 
-          className="bg-white hover:bg-gray-100 text-gray-800 font-semibold p-2 border border-gray-400 rounded shadow flex items-center justify-center cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            map.locate({ setView: true })
-          }}
-          title="Locate Me"
-          style={{ width: '34px', height: '34px' }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="22" y1="12" x2="18" y2="12"></line>
-            <line x1="6" y1="12" x2="2" y2="12"></line>
-            <line x1="12" y1="6" x2="12" y2="2"></line>
-            <line x1="12" y1="22" x2="12" y2="18"></line>
-          </svg>
-        </a>
+    <>
+      {userLoc && <Marker position={userLoc} opacity={0.5} />}
+      <div className="leaflet-bottom leaflet-right" style={{ pointerEvents: 'auto', marginBottom: '22px', marginRight: '10px', zIndex: 1000 }}>
+        <div className="leaflet-control leaflet-bar border-none shadow-none">
+          <button 
+            className="bg-white hover:bg-gray-50 text-gray-800 font-semibold p-2 rounded-xl shadow-lg border border-gray-200 flex items-center justify-center transition-all active:scale-95"
+            onClick={handleLocate}
+            title="Locate Me"
+            type="button"
+            disabled={loading}
+            style={{ width: '42px', height: '42px', cursor: 'pointer' }}
+          >
+            {loading ? (
+                <span className="animate-spin h-5 w-5 border-2 border-green-600 border-t-transparent rounded-full"></span>
+            ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <line x1="12" y1="2" x2="12" y2="4"></line>
+                  <line x1="12" y1="20" x2="12" y2="22"></line>
+                  <line x1="2" y1="12" x2="4" y2="12"></line>
+                  <line x1="20" y1="12" x2="22" y2="12"></line>
+                </svg>
+            )}
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -101,7 +133,7 @@ export default function RadiusEditor({ onChange }: RadiusEditorProps) {
       </MapContainer>
 
       <div className="absolute top-4 left-4 z-[400] bg-white/95 p-3 rounded-xl shadow-lg border border-gray-100 text-xs font-medium text-gray-700">
-        📍 Tap to drop a pin. A 1km radius will be set.
+        📍 Tap to drop a pin. A 100m radius will be set.
       </div>
     </div>
   )
