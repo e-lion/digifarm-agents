@@ -24,6 +24,7 @@ export function RouteList({ userId }: { userId: string }) {
       .select('*')
       .eq('agent_id', userId)
       .order('scheduled_date', { ascending: false })
+      .order('created_at', { ascending: false })
       .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1)
 
     if (statusFilter !== 'all') {
