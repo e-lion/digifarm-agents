@@ -63,10 +63,21 @@ function MapEvents({ onClick }: { onClick: (e: L.LeafletMouseEvent) => void }) {
       })
   }
 
+  const containerRef = (ref: HTMLDivElement | null) => {
+    if (ref) {
+      L.DomEvent.disableClickPropagation(ref)
+      L.DomEvent.disableScrollPropagation(ref)
+    }
+  }
+
   return (
     <>
       {userLoc && <Marker position={userLoc} opacity={0.5} />}
-      <div className="leaflet-bottom leaflet-right" style={{ pointerEvents: 'auto', marginBottom: '22px', marginRight: '10px', zIndex: 1000 }}>
+      <div 
+        ref={containerRef}
+        className="leaflet-bottom leaflet-right" 
+        style={{ pointerEvents: 'auto', marginBottom: '22px', marginRight: '10px', zIndex: 1000 }}
+      >
         <div className="leaflet-control leaflet-bar border-none shadow-none">
           <button 
             className="bg-white hover:bg-gray-50 text-gray-800 font-semibold p-2 rounded-xl shadow-lg border border-gray-200 flex items-center justify-center transition-all active:scale-95"
