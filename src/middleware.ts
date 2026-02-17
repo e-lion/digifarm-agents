@@ -38,10 +38,17 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Public paths
-  if (path.startsWith('/auth/login') || path.startsWith('/api/auth')) {
+  if (path.startsWith('/auth/login') || path.startsWith('/api/auth') || path === '/') {
     if (user) {
-      // If user is already logged in, redirect based on role (fetch role from profile later)
-      // For now, default to agent dashboard if not specified
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.role === 'admin') {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      }
       return NextResponse.redirect(new URL('/agent/routes', request.url))
     }
     return response
@@ -50,6 +57,22 @@ export async function middleware(request: NextRequest) {
   // Protected paths
   if (!user && (path.startsWith('/admin') || path.startsWith('/agent'))) {
     return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // Role-based path protection
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (path.startsWith('/admin') && profile?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/agent/routes', request.url))
+    }
+    if (path.startsWith('/agent') && profile?.role === 'admin') {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+    }
   }
 
   return response
