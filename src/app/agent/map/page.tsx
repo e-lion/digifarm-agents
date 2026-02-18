@@ -37,7 +37,7 @@ export default async function AgentMapPage() {
   const hasPolygons = allPoints.length > 0
   
   return (
-    <AgentLayout>
+    <>
       <div className="h-[calc(100vh-180px)] w-full rounded-lg overflow-hidden border border-gray-200 shadow-sm relative z-0">
          <Map 
            polygons={mapPolygons} 
@@ -56,6 +56,6 @@ export default async function AgentMapPage() {
             </div>
          </div>
       </div>
-    </AgentLayout>
+    </>
   )
 }

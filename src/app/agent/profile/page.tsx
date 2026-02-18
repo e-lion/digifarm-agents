@@ -32,25 +32,23 @@ export default async function ProfilePage() {
   }
 
   return (
-    <AgentLayout>
-      <div className="space-y-6">
-        <ProfileForm profile={profile as any} email={user.email!} />
+    <div className="space-y-6">
+      <ProfileForm profile={profile as any} email={user.email!} />
 
-        <form action={handleSignOut}>
-          <Button 
-            variant="danger" 
-            className="w-full flex items-center justify-center gap-2 h-12"
-            type="submit"
-          >
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </Button>
-        </form>
+      <form action={handleSignOut}>
+        <Button 
+          variant="danger" 
+          className="w-full flex items-center justify-center gap-2 h-12"
+          type="submit"
+        >
+          <LogOut className="h-5 w-5" />
+          Sign Out
+        </Button>
+      </form>
 
-        <div className="text-center pt-8">
-          <p className="text-xs text-gray-400">DigiFarm Agent PWA v1.0.0</p>
-        </div>
+      <div className="text-center pt-8">
+        <p className="text-xs text-gray-400">DigiFarm Agent PWA v1.0.0</p>
       </div>
-    </AgentLayout>
+    </div>
   )
 }
