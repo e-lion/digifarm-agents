@@ -86,7 +86,7 @@ export function SearchableSelect({
                 setInputValue("") // Clear on focus to allow fresh search
               }}
               placeholder={placeholder}
-              className="flex h-10 w-full bg-transparent text-sm font-medium outline-none placeholder:text-gray-400 border-none focus:ring-0 disabled:cursor-not-allowed"
+              className="flex h-10 w-full bg-transparent text-base font-medium outline-none placeholder:text-gray-400 border-none focus:ring-0 disabled:cursor-not-allowed"
             />
           </div>
           

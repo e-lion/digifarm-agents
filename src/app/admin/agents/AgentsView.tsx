@@ -134,7 +134,7 @@ export function AgentsView({ agentsWithMetrics, whitelistedAgents, addAgentActio
                           type="date" 
                           value={startDate}
                           onChange={(e) => handleDateChange('start', e.target.value)}
-                          className="text-sm border-none focus:ring-0 p-0 text-gray-700 w-32"
+                          className="text-base border-none focus:ring-0 p-0 text-gray-700 w-32"
                       />
                   </div>
                   <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm">
@@ -144,7 +144,7 @@ export function AgentsView({ agentsWithMetrics, whitelistedAgents, addAgentActio
                           type="date" 
                           value={endDate}
                           onChange={(e) => handleDateChange('end', e.target.value)}
-                          className="text-sm border-none focus:ring-0 p-0 text-gray-700 w-32"
+                          className="text-base border-none focus:ring-0 p-0 text-gray-700 w-32"
                       />
                   </div>
                   <Button 

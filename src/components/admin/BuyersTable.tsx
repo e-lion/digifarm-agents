@@ -242,7 +242,7 @@ export default function BuyersTable({
                 <select 
                     value={itemsPerPage}
                     onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                    className="h-8 w-16 rounded border-gray-200 text-xs focus:ring-green-500 focus:border-green-500"
+                    className="h-8 w-16 rounded border-gray-200 text-base focus:ring-green-500 focus:border-green-500"
                 >
                     <option value={8}>8</option>
                     <option value={16}>16</option>

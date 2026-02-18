@@ -140,7 +140,7 @@ export function RouteList({ userId }: { userId: string }) {
                 <select 
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="w-full h-11 pl-9 pr-8 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 outline-none appearance-none text-sm font-medium"
+                  className="w-full h-11 pl-9 pr-8 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 outline-none appearance-none text-base font-medium"
                 >
                   <option value="all">All States</option>
                   <option value="planned">Planned</option>
@@ -162,7 +162,7 @@ export function RouteList({ userId }: { userId: string }) {
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
                   onClick={(e) => (e.target as any).showPicker?.()}
-                  className="w-full h-11 pl-9 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer [appearance:none] [&::-webkit-calendar-picker-indicator]:hidden text-sm font-medium"
+                  className="w-full h-11 pl-9 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer [appearance:none] [&::-webkit-calendar-picker-indicator]:hidden text-base font-medium"
                 />
                 {dateFilter && (
                    <button 
