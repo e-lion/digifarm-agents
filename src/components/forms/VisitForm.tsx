@@ -413,7 +413,7 @@ export default function VisitForm({
         </CardContent>
       </Card>
 
-      {(isWithinRange || !targetPolygon) && (
+      {isWithinRange && (
         <Card>
           <CardHeader>
             <CardTitle>Visit Report: {buyerName}</CardTitle>
