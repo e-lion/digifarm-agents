@@ -15,20 +15,13 @@ export async function GET(request: Request) {
       // Admin Gate Check
       const { data: { user } } = await supabase.auth.getUser()
       if (user?.email) {
-        console.log('Checking access for:', user.email) 
-        
         const { data: access, error: accessError } = await supabase
           .from('profile_access')
           .select('role')
           .eq('email', user.email) // Note: In production you might want .ilike() but verify DB collation
           .maybeSingle()
 
-        if (accessError) {
-            console.error('Access Check Error:', accessError)
-        }
-
         if (!access) {
-          console.error('No access record found for:', user.email)
           // Identify is not allowed
           await supabase.auth.signOut()
           return NextResponse.redirect(`${origin}/auth/login?error=UnauthorizedAccess`)

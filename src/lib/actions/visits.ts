@@ -2,6 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { Database } from '@/types/database'
+
+type VisitInsert = Database['public']['Tables']['visits']['Insert']
+type BuyerInsert = Database['public']['Tables']['buyers']['Insert']
 
 export async function createVisitAction(data: {
   buyer_name: string
@@ -19,24 +23,26 @@ export async function createVisitAction(data: {
   }
 
   // 1. Upsert buyer
-  const { error: buyerError } = await supabase.from('buyers').upsert({
+  const buyerData: BuyerInsert = {
     name: data.buyer_name,
     business_type: data.buyer_type,
     value_chain: data.value_chain,
     county: data.county
-  }, { onConflict: 'name' })
+  }
+  const { error: buyerError } = await supabase.from('buyers').upsert(buyerData, { onConflict: 'name' })
 
   if (buyerError) return { error: buyerError.message }
 
   // 2. Insert visit
-  const { error: visitError } = await supabase.from('visits').insert({
+  const visitData: VisitInsert = {
     agent_id: user.id,
     buyer_name: data.buyer_name,
     buyer_type: data.buyer_type,
     scheduled_date: data.scheduled_date,
     status: 'planned',
     polygon_coords: data.polygon_coords
-  })
+  }
+  const { error: visitError } = await supabase.from('visits').insert(visitData)
 
   if (visitError) return { error: visitError.message }
 

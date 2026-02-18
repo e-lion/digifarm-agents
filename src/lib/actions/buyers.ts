@@ -63,7 +63,7 @@ export async function getBuyers(
         .order('created_at', { ascending: false })
 
         if (visitsError) throw visitsError
-        visits = visitsData
+        visits = visitsData as any[]
     }
 
     // 3. Aggregate stats
