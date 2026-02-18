@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/Button'
 import { Trash2, Check } from 'lucide-react'
 
 // Fix icons
-const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png'
-const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png'
-const shadowUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+const iconUrl = '/marker-icon.png?v=1'
+const iconRetinaUrl = '/marker-icon-2x.png?v=1'
+const shadowUrl = '/marker-shadow.png?v=1'
 
 const DefaultIcon = L.icon({
   iconUrl,
