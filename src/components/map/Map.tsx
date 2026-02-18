@@ -6,9 +6,9 @@ import L from 'leaflet'
 import { useEffect, useState } from 'react'
 
 // Fix for default marker icons in Next.js
-const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png'
-const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png'
-const shadowUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+const iconUrl = '/marker-icon.png'
+const iconRetinaUrl = '/marker-icon-2x.png'
+const shadowUrl = '/marker-shadow.png'
 
 const DefaultIcon = L.icon({
   iconUrl,

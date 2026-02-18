@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import QueryProvider from '@/components/providers/QueryProvider'
 import { PwaInstallPrompt } from '@/components/pwa/PwaInstallPrompt'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         <QueryProvider>
           {children}
           <PwaInstallPrompt />
+          <Toaster position="top-center" richColors />
         </QueryProvider>
       </body>
     </html>

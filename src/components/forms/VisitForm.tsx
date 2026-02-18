@@ -349,6 +349,35 @@ export default function VisitForm({
   }
 
   const onSubmit = async (data: FormValues) => {
+    // Check for offline status
+    if (!navigator.onLine) {
+        try {
+            const { saveOfflineReport } = await import('@/lib/offline-storage')
+            await saveOfflineReport({
+                id: visitId,
+                buyerName: buyerName,
+                data: data,
+                coords: coords,
+                timestamp: Date.now()
+            })
+            
+            // Dispatch event to update pending count in UI
+            window.dispatchEvent(new Event('offline-storage-updated'))
+            
+            // Manually set status to 'completed' equivalent for UI feedback
+            // We can reuse the existing success UI or validly redirect
+            // Ideally we show the success card but with "Saved Offline" message
+            // or just toast and redirect. 
+            // For now, let's redirect to routes which will show the pending status
+            router.push('/agent/routes')
+            return
+        } catch (e) {
+            console.error("Failed to save offline", e)
+            alert("Failed to save report offline. Please try again.")
+            return
+        }
+    }
+
     const result = await updateVisitAction(visitId, buyerName, data, coords)
 
     if (result.error) {

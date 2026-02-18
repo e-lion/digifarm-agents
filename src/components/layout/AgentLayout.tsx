@@ -1,4 +1,6 @@
 import { MobileNav } from './MobileNav'
+import { SyncManager } from '@/components/providers/SyncManager'
+
 
 export default function AgentLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +12,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
         {children}
       </main>
       <MobileNav />
+      <SyncManager />
     </div>
   )
 }
