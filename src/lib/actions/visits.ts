@@ -65,6 +65,7 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
       status: 'completed',
       visit_details: data,
       check_in_location: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
+      completed_at: new Date().toISOString()
     })
     .eq('id', visitId)
 

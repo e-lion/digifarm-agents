@@ -229,9 +229,9 @@ export default function BuyersTable({
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                        {buyer.last_visited ? (
+                        {buyer.latest_visit_completed_at || buyer.last_visited ? (
                             <div className="text-xs text-gray-500">
-                                {new Date(buyer.last_visited).toLocaleString('en-GB', { 
+                                {new Date(buyer.latest_visit_completed_at || buyer.last_visited!).toLocaleString('en-GB', { 
                                   day: '2-digit', 
                                   month: 'short', 
                                   hour: '2-digit', 
