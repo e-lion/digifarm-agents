@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Loader2, MapPin, CheckCircle, XCircle } from 'lucide-react'
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 import { point, polygon } from '@turf/helpers'
+import circle from '@turf/circle'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
@@ -283,9 +284,21 @@ export default function VisitForm({
       const { latitude, longitude } = position.coords
       setCoords({ lat: latitude, lng: longitude })
       
+      
       if (!targetPolygon) {
         setIsWithinRange(true)
         setLocationChecking(false)
+        
+        // Generate 100m circle for this location since it wasn't set during creation
+        try {
+            const center = point([longitude, latitude])
+            const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
+            recordCheckInAction(visitId, { lat: latitude, lng: longitude }, circularPolygon.geometry)
+        } catch (e) {
+            console.error("Error generating on-site polygon:", e)
+            // Fallback to just recording check-in without polygon
+            recordCheckInAction(visitId, { lat: latitude, lng: longitude })
+        }
         return
       }
 

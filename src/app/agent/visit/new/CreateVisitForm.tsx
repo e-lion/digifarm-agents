@@ -61,11 +61,7 @@ export default function CreateVisitForm() {
         return
     }
 
-    if (!selectedPoint) {
-      alert('Please drop a pin to define the area')
-      setLoading(false)
-      return
-    }
+
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -78,8 +74,13 @@ export default function CreateVisitForm() {
 
     // Convert point [lat, lng] to 100m radius circle polygon
     // turf circle uses [lng, lat]
-    const center = point([selectedPoint[1], selectedPoint[0]])
-    const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
+    let polygonGeometry = null
+    
+    if (selectedPoint) {
+        const center = point([selectedPoint[1], selectedPoint[0]])
+        const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
+        polygonGeometry = circularPolygon.geometry
+    }
 
     const result = await createVisitAction({
       buyer_name: buyerName,
@@ -87,7 +88,7 @@ export default function CreateVisitForm() {
       value_chain: valueChain,
       county: county,
       scheduled_date: date,
-      polygon_coords: circularPolygon.geometry
+      polygon_coords: polygonGeometry
     })
 
     if (result.error) {

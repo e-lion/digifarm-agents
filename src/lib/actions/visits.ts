@@ -76,15 +76,21 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
   return { success: true }
 }
 
-export async function recordCheckInAction(visitId: string, coords: {lat: number, lng: number}) {
+export async function recordCheckInAction(visitId: string, coords: {lat: number, lng: number}, polygon_coords?: any) {
   const supabase = await createClient()
+
+  const updateData: any = {
+    checked_in_at: new Date().toISOString(),
+    check_in_location: `POINT(${coords.lng} ${coords.lat})`
+  }
+
+  if (polygon_coords) {
+    updateData.polygon_coords = polygon_coords
+  }
 
   const { error } = await supabase
     .from('visits')
-    .update({
-      checked_in_at: new Date().toISOString(),
-      check_in_location: `POINT(${coords.lng} ${coords.lat})`
-    })
+    .update(updateData)
     .eq('id', visitId)
 
   if (error) return { error: error.message }
