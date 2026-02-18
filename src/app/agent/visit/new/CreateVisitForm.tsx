@@ -143,18 +143,18 @@ export default function CreateVisitForm() {
           </div>
 
           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date</label>
+             <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date & Time</label>
              <div className="relative group">
                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-green-500 transition-colors pointer-events-none">
                  <Calendar className="h-4 w-4" />
                </div>
                <Input 
                 name="date" 
-                type="date" 
+                type="datetime-local" 
                 required 
-                min={new Date().toISOString().split('T')[0]}
+                min={new Date().toISOString().slice(0, 16)}
                 onClick={(e) => (e.target as any).showPicker?.()}
-                className="pl-11 h-12 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer [appearance:none] [&::-webkit-calendar-picker-indicator]:hidden"
+                className="pl-11 h-12 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer"
                />
              </div>
           </div>

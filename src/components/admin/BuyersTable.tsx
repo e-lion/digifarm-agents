@@ -60,12 +60,11 @@ export default function BuyersTable({
         const { buyers: allBuyers } = await getBuyers(1, 10000, currentSearch)
         
         // CSV Export
-        const headers = ['Name', 'Created At', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Count', 'Agent Names', 'Latest Agent', 'Latest Status', 'Latest Planned Date', 'Last Visit']
         const csvContent = [
         headers.join(','),
         ...allBuyers.map(b => [
             `"${b.name}"`,
-            b.created_at ? new Date(b.created_at).toLocaleDateString() : '',
+            b.created_at ? new Date(b.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
             `"${b.contact_name || ''}"`,
             `"${b.phone || ''}"`,
             `"${b.value_chain || ''}"`,
@@ -75,8 +74,8 @@ export default function BuyersTable({
             `"${b.agent_names.join(', ')}"`,
             `"${b.latest_visit_agent_name || ''}"`,
             `"${b.latest_visit_status || ''}"`,
-            b.latest_visit_scheduled_date ? new Date(b.latest_visit_scheduled_date).toLocaleDateString() : '',
-            b.last_visited ? new Date(b.last_visited).toLocaleDateString() : ''
+            b.latest_visit_scheduled_date ? new Date(b.latest_visit_scheduled_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+            b.last_visited ? new Date(b.last_visited).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
         ].join(','))
         ].join('\n')
 
@@ -215,7 +214,12 @@ export default function BuyersTable({
                             {buyer.latest_visit_scheduled_date && (
                               <span className="text-[10px] text-gray-400 flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {new Date(buyer.latest_visit_scheduled_date).toLocaleDateString()}
+                                {new Date(buyer.latest_visit_scheduled_date).toLocaleString('en-GB', { 
+                                  day: '2-digit', 
+                                  month: 'short', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
                               </span>
                             )}
                           </div>
@@ -227,7 +231,12 @@ export default function BuyersTable({
                     <td className="px-6 py-4 text-right">
                         {buyer.last_visited ? (
                             <div className="text-xs text-gray-500">
-                                {new Date(buyer.last_visited).toLocaleDateString()}
+                                {new Date(buyer.last_visited).toLocaleString('en-GB', { 
+                                  day: '2-digit', 
+                                  month: 'short', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
                             </div>
                         ) : (
                             <span className="text-xs text-gray-400 italic">Never</span>
