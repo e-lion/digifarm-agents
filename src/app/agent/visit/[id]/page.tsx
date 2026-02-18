@@ -16,12 +16,15 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [loadingStatus, setLoadingStatus] = useState("Loading...")
+
   useEffect(() => {
     async function loadVisit() {
       try {
         setLoading(true)
+        setLoadingStatus("Checking local drafts...")
         
-        // 1. Check Offline Drafts (Priority if isDraft is true, or fallback)
+        // 1. Check Offline Drafts (Priority)
         const drafts = await getOfflineNewVisits()
         const draft = drafts.find(d => d.id === id)
         if (draft) {
@@ -30,23 +33,38 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
             return
         }
 
-        // 2. Try online fetch
+        // 2. Try online fetch with timeout
         if (navigator.onLine) {
+            setLoadingStatus("Fetching from server...")
             const supabase = createClient()
-            const { data, error: fetchError } = await supabase
-                .from('visits')
-                .select('*')
-                .eq('id', id)
-                .single()
             
-            if (!fetchError && data) {
-                setVisit(data)
-                setLoading(false)
-                return
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), 5000)
+            )
+            
+            try {
+                const fetchPromise = supabase
+                    .from('visits')
+                    .select('*')
+                    .eq('id', id)
+                    .single()
+                
+                // Race against timeout
+                const { data, error: fetchError } = await Promise.race([fetchPromise, timeoutPromise]) as any
+                
+                if (!fetchError && data) {
+                    setVisit(data)
+                    setLoading(false)
+                    return
+                }
+            } catch (e) {
+                console.warn("Server fetch timed out or failed, falling back to cache")
             }
         }
 
         // 3. Fallback to cached planned visits
+        setLoadingStatus("Checking offline cache...")
         const cached = await getCachedPlannedVisit(id)
         if (cached) {
             setVisit(cached)
@@ -68,7 +86,7 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
     return (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
              <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-             <p className="text-sm">Loading visit details...</p>
+             <p className="text-sm">{loadingStatus}</p>
         </div>
     )
   }

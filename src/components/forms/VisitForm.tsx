@@ -365,43 +365,54 @@ export default function VisitForm({
     }
   }
 
+  const handleOfflineSave = async (data: FormValues) => {
+      try {
+          const { saveOfflineReport } = await import('@/lib/offline-storage')
+          await saveOfflineReport({
+              id: visitId,
+              buyerName: buyerName,
+              data: data,
+              coords: coords,
+              timestamp: Date.now()
+          })
+          
+          window.dispatchEvent(new Event('offline-storage-updated'))
+          
+          toast.success("Report saved to outbox (Offline Mode)", {
+              duration: 5000,
+              icon: <WifiOff className="h-5 w-5 text-orange-500" />
+          })
+          
+          router.push('/agent/routes')
+      } catch (e) {
+          console.error("Failed to save offline", e)
+          alert("Failed to save report. Please try again.")
+      }
+  }
+
   const onSubmit = async (data: FormValues) => {
-    // Check for offline status
+    // 1. Explicit Offline Check
     if (!navigator.onLine) {
-        try {
-            const { saveOfflineReport } = await import('@/lib/offline-storage')
-            await saveOfflineReport({
-                id: visitId,
-                buyerName: buyerName,
-                data: data,
-                coords: coords,
-                timestamp: Date.now()
-            })
-            
-            // Dispatch event to update pending count in UI
-            window.dispatchEvent(new Event('offline-storage-updated'))
-            
-            toast.success("Report saved to outbox. It will sync automatically when you are back online.", {
-                duration: 5000,
-                icon: <WifiOff className="h-5 w-5 text-orange-500" />
-            })
-            
-            router.push('/agent/routes')
-            return
-        } catch (e) {
-            console.error("Failed to save offline", e)
-            alert("Failed to save report offline. Please try again.")
+        await handleOfflineSave(data)
+        return
+    }
+
+    // 2. Try Online Submission
+    try {
+        const result = await updateVisitAction(visitId, buyerName, data, coords)
+
+        if (result.error) {
+            // If it's a specific server error (not network), show it
+            alert(result.error)
             return
         }
+        router.push('/agent/routes')
+    } catch (e) {
+        // 3. Network/Server Error Fallback
+        console.warn("Online submission failed, falling back to offline save", e)
+        toast.info("Connection unstable. Saving locally instead.")
+        await handleOfflineSave(data)
     }
-
-    const result = await updateVisitAction(visitId, buyerName, data, coords)
-
-    if (result.error) {
-      alert(result.error)
-      return
-    }
-    router.push('/agent/routes')
   }
 
   return (
