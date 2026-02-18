@@ -11,6 +11,7 @@ import { point } from '@turf/helpers'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Calendar } from 'lucide-react'
+import { createVisitAction } from '@/lib/actions/visits'
 
 export default function CreateVisitForm() {
   const [loading, setLoading] = useState(false)
@@ -18,6 +19,7 @@ export default function CreateVisitForm() {
   const router = useRouter()
   
   const [valueChain, setValueChain] = useState("")
+  const [buyerType, setBuyerType] = useState("")
 
   const KENYAN_VALUE_CHAINS = [
     "Maize", "Tea", "Coffee", "Dairy", "Sugarcane", "Potatoes", "Beans", 
@@ -25,6 +27,8 @@ export default function CreateVisitForm() {
     "Macadamia", "Cashew Nuts", "Pyrethrum", "Cotton", "Sunflower", "Soya Beans",
     "Tomatoes", "Onions", "Cabbages", "Kales (Sukuma Wiki)", "Poultry", "Goats/Sheep"
   ]
+
+  const BUYER_TYPES = ['Aggregator', 'Processor', 'Exporter', 'Input Supplier', 'Cooperative']
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -35,6 +39,12 @@ export default function CreateVisitForm() {
 
     if (!valueChain) {
         alert('Please select a value chain')
+        setLoading(false)
+        return
+    }
+
+    if (!buyerType) {
+        alert('Please select a buyer type')
         setLoading(false)
         return
     }
@@ -59,17 +69,17 @@ export default function CreateVisitForm() {
     const center = point([selectedPoint[1], selectedPoint[0]])
     const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
 
-    const { error } = await supabase.from('visits').insert({
-      agent_id: user.id,
+    const result = await createVisitAction({
       buyer_name: buyerName,
+      buyer_type: buyerType,
+      value_chain: valueChain,
       scheduled_date: date,
-      status: 'planned',
       polygon_coords: circularPolygon.geometry
     })
 
-    if (error) {
-      console.error(error)
-      alert('Failed to create visit')
+    if (result.error) {
+      console.error(result.error)
+      alert(result.error)
     } else {
       router.push('/agent/routes')
     }
@@ -83,6 +93,16 @@ export default function CreateVisitForm() {
           <div>
              <label className="block text-sm font-medium text-gray-700 mb-1">Buyer Name</label>
              <Input name="buyer_name" required placeholder="e.g. Upcountry Millers" />
+          </div>
+
+          <div className="relative">
+             <label className="block text-sm font-medium text-gray-700 mb-1">Buyer Type</label>
+             <SearchableSelect 
+               options={BUYER_TYPES} 
+               value={buyerType} 
+               onChange={setBuyerType} 
+               placeholder="Search buyer types..."
+             />
           </div>
           
           <div className="relative">

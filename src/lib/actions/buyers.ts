@@ -10,9 +10,13 @@ export interface BuyerWithStats {
   value_chain: string | null
   business_type: string | null
   county: string | null
+  created_at: string
   agent_count: number
   agent_names: string[]
   last_visited: string | null
+  latest_visit_status: string | null
+  latest_visit_agent_name: string | null
+  latest_visit_scheduled_date: string | null
 }
 
 export async function getBuyers(
@@ -52,7 +56,7 @@ export async function getBuyers(
     if (buyerNames.length > 0) {
         const { data: visitsData, error: visitsError } = await supabase
         .from('visits')
-        .select('buyer_name, agent_id, created_at, profiles(full_name, email)')
+        .select('buyer_name, agent_id, status, created_at, scheduled_date, profiles(full_name, first_name, last_name, email)')
         .in('buyer_name', buyerNames)
         .order('created_at', { ascending: false })
 
@@ -61,34 +65,66 @@ export async function getBuyers(
     }
 
     // 3. Aggregate stats
-    const buyerStats = new Map<string, { agents: Set<string>, lastVisit: string | null }>()
+    const buyerStats = new Map<string, { 
+      agents: Set<string>, 
+      lastVisit: string | null,
+      latestStatus: string | null,
+      latestAgent: string | null,
+      latestScheduled: string | null
+    }>()
 
     visits.forEach(visit => {
       if (!visit.buyer_name) return
       
-      const stats = buyerStats.get(visit.buyer_name) || { agents: new Set(), lastVisit: null }
+      const normalizedName = visit.buyer_name.trim().toLowerCase()
+      const stats = buyerStats.get(normalizedName) || { 
+        agents: new Set(), 
+        lastVisit: null,
+        latestStatus: null,
+        latestAgent: null,
+        latestScheduled: null
+      }
       
       // Add agent name or email
       const profiles = Array.isArray(visit.profiles) ? visit.profiles[0] : visit.profiles
-      const agentName = profiles?.full_name || profiles?.email || 'Unknown Agent'
+      const agentName = profiles?.full_name 
+        ? profiles.full_name 
+        : profiles?.first_name 
+          ? `${profiles.first_name} ${profiles.last_name || ''}`.trim() 
+          : profiles?.email || 'Unknown Agent';
       stats.agents.add(agentName)
       
       // Update last visit if newer
-      if (!stats.lastVisit || new Date(visit.created_at) > new Date(stats.lastVisit)) {
-        stats.lastVisit = visit.created_at
+      if (visit.created_at) {
+        if (!stats.lastVisit || new Date(visit.created_at) > new Date(stats.lastVisit)) {
+            stats.lastVisit = visit.created_at
+            stats.latestStatus = visit.status
+            stats.latestAgent = agentName
+            stats.latestScheduled = visit.scheduled_date
+        }
       }
       
-      buyerStats.set(visit.buyer_name, stats)
+      buyerStats.set(normalizedName, stats)
     })
 
     // 4. Merge
     const result: BuyerWithStats[] = buyers.map(buyer => {
-      const stats = buyerStats.get(buyer.name) || { agents: new Set(), lastVisit: null }
+      const normalizedName = buyer.name?.trim().toLowerCase()
+      const stats = buyerStats.get(normalizedName) || { 
+        agents: new Set(), 
+        lastVisit: null,
+        latestStatus: null,
+        latestAgent: null,
+        latestScheduled: null
+      }
       return {
         ...buyer,
         agent_count: stats.agents.size,
         agent_names: Array.from(stats.agents),
-        last_visited: stats.lastVisit
+        last_visited: stats.lastVisit,
+        latest_visit_status: stats.latestStatus,
+        latest_visit_agent_name: stats.latestAgent,
+        latest_visit_scheduled_date: stats.latestScheduled
       }
     })
 

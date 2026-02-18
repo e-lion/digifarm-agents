@@ -6,7 +6,7 @@ import { BuyerWithStats, getBuyers } from '@/lib/actions/buyers'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
-import { Search, Download, ChevronLeft, ChevronRight, User, Building2, MapPin, Phone } from 'lucide-react'
+import { Search, Download, ChevronLeft, ChevronRight, User, Building2, MapPin, Phone, Calendar } from 'lucide-react'
 
 interface BuyersTableProps {
   buyers: BuyerWithStats[]
@@ -60,11 +60,12 @@ export default function BuyersTable({
         const { buyers: allBuyers } = await getBuyers(1, 10000, currentSearch)
         
         // CSV Export
-        const headers = ['Name', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Count', 'Agent Names', 'Last Visited']
+        const headers = ['Name', 'Created At', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Count', 'Agent Names', 'Latest Agent', 'Latest Status', 'Latest Planned Date', 'Last Visit']
         const csvContent = [
         headers.join(','),
         ...allBuyers.map(b => [
             `"${b.name}"`,
+            b.created_at ? new Date(b.created_at).toLocaleDateString() : '',
             `"${b.contact_name || ''}"`,
             `"${b.phone || ''}"`,
             `"${b.value_chain || ''}"`,
@@ -72,6 +73,9 @@ export default function BuyersTable({
             `"${b.county || ''}"`,
             b.agent_count,
             `"${b.agent_names.join(', ')}"`,
+            `"${b.latest_visit_agent_name || ''}"`,
+            `"${b.latest_visit_status || ''}"`,
+            b.latest_visit_scheduled_date ? new Date(b.latest_visit_scheduled_date).toLocaleDateString() : '',
             b.last_visited ? new Date(b.last_visited).toLocaleDateString() : ''
         ].join(','))
         ].join('\n')
@@ -125,11 +129,13 @@ export default function BuyersTable({
             <thead className="bg-gray-50/50 text-gray-500 font-medium border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Buyer Details</th>
+                <th className="px-6 py-4 uppercase text-xs tracking-wider">Created</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Contact Info</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Value Chain</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Location</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider text-center">Engagement</th>
-                <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Last Visit</th>
+                <th className="px-6 py-4 uppercase text-xs tracking-wider">Latest Visit</th>
+                <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Last Interaction</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -159,13 +165,18 @@ export default function BuyersTable({
                         </div>
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-xs text-gray-500">
+                        {new Date(buyer.created_at).toLocaleDateString()}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-gray-900 font-medium">
+                        <div className="flex items-center gap-2 text-gray-900 font-medium whitespace-nowrap">
                             <User className="h-3 w-3 text-gray-400" />
                             {buyer.contact_name || '-'}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
                             <Phone className="h-3 w-3" />
                             {buyer.phone || '-'}
                         </div>
@@ -188,9 +199,34 @@ export default function BuyersTable({
                         <div className="text-[10px] text-gray-400 uppercase tracking-wide">Agents</div>
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                      {buyer.latest_visit_agent_name ? (
+                        <div className="space-y-1">
+                          <div className="text-xs font-medium text-gray-900 flex items-center gap-1.5">
+                            <User className="h-3 w-3 text-green-600" />
+                            {buyer.latest_visit_agent_name}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-tighter ${
+                              buyer.latest_visit_status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {buyer.latest_visit_status}
+                            </span>
+                            {buyer.latest_visit_scheduled_date && (
+                              <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(buyer.latest_visit_scheduled_date).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">No visits planned</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
                         {buyer.last_visited ? (
-                            <div className="text-sm text-gray-900">
+                            <div className="text-xs text-gray-500">
                                 {new Date(buyer.last_visited).toLocaleDateString()}
                             </div>
                         ) : (

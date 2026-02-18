@@ -13,6 +13,7 @@ import { point, polygon } from '@turf/helpers'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { updateVisitAction } from '@/lib/actions/visits'
 import dynamic from 'next/dynamic'
 
 const KENYAN_VALUE_CHAINS = [
@@ -29,6 +30,10 @@ const formSchema = z.object({
   active_farmers: z.number().min(0, 'Must be 0 or more'),
   county: z.string().min(1, 'Select a county'),
   agsi_business_type: z.string().min(1, 'Select business type'),
+  is_potential_customer: z.enum(['Yes', 'No', 'Maybe'], {
+    required_error: "Please select if they are a potential customer",
+  }),
+  trade_volume: z.number().min(0, 'Must be 0 or more'),
   buyer_feedback: z.string().optional(),
 })
 
@@ -48,6 +53,7 @@ const DynamicMap = dynamic(() => import('@/components/map/Map'), {
 export default function VisitForm({ 
   visitId, 
   buyerName, 
+  buyerType,
   targetPolygon,
   initialData,
   status,
@@ -55,6 +61,7 @@ export default function VisitForm({
 }: { 
   visitId: string, 
   buyerName: string, 
+  buyerType?: string,
   targetPolygon: any,
   initialData?: any,
   status?: string,
@@ -223,6 +230,14 @@ export default function VisitForm({
                    <label className="text-xs text-gray-500 uppercase">Business Type</label>
                    <p className="font-medium">{initialData.agsi_business_type}</p>
                 </div>
+                <div>
+                   <label className="text-xs text-gray-500 uppercase">Potential Customer</label>
+                   <p className="font-medium">{initialData.is_potential_customer || 'Not specified'}</p>
+                </div>
+                <div>
+                   <label className="text-xs text-gray-500 uppercase">Trade Volume / Month</label>
+                   <p className="font-medium">{initialData.trade_volume ? `${initialData.trade_volume.toLocaleString()} units` : 'Not specified'}</p>
+                </div>
              </div>
              
              {initialData.buyer_feedback && (
@@ -260,7 +275,10 @@ export default function VisitForm({
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {}
+    defaultValues: {
+      ...initialData,
+      agsi_business_type: initialData?.agsi_business_type || buyerType || ""
+    }
   })
   
   const valueChain = watch('value_chain')
@@ -316,18 +334,10 @@ export default function VisitForm({
   }
 
   const onSubmit = async (data: FormValues) => {
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('visits')
-      .update({
-        status: 'completed',
-        visit_details: data,
-        check_in_location: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
-      })
-      .eq('id', visitId)
+    const result = await updateVisitAction(visitId, buyerName, data, coords)
 
-    if (error) {
-      alert('Failed to submit visit')
+    if (result.error) {
+      alert(result.error)
       return
     }
     router.push('/agent/routes')
@@ -461,6 +471,32 @@ export default function VisitForm({
                   {BUSINESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
                 {errors.agsi_business_type && <p className="text-xs text-red-500 mt-1">{errors.agsi_business_type.message}</p>}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Are they a potential customer? (Qualifying Lead)</label>
+                <div className="flex gap-4 mt-2">
+                  {['Yes', 'No', 'Maybe'].map((option) => (
+                    <label key={option} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value={option}
+                        {...register('is_potential_customer')}
+                        className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">{option}</span>
+                    </label>
+                  ))}
+                </div>
+                {errors.is_potential_customer && (
+                  <p className="text-xs text-red-500 mt-1">{errors.is_potential_customer.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Trade Volume per Month</label>
+                <Input {...register('trade_volume', { valueAsNumber: true })} type="number" placeholder="e.g. 5000" />
+                {errors.trade_volume && <p className="text-xs text-red-500 mt-1">{errors.trade_volume.message}</p>}
               </div>
 
               <div>
