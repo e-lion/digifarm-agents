@@ -326,6 +326,28 @@ export default function VisitForm({
     })
   }
 
+  const handleRelocate = async () => {
+    if (!coords) return
+    setLocationChecking(true)
+    setError(null)
+    
+    try {
+        const center = point([coords.lng, coords.lat])
+        const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
+        const result = await recordCheckInAction(visitId, coords, circularPolygon.geometry)
+        
+        if (result?.error) {
+            setError(result.error)
+        } else {
+            setIsWithinRange(true)
+        }
+    } catch (e: any) {
+        setError(`Relocation Failed: ${e.message}`)
+    } finally {
+        setLocationChecking(false)
+    }
+  }
+
   const onSubmit = async (data: FormValues) => {
     const result = await updateVisitAction(visitId, buyerName, data, coords)
 
@@ -398,6 +420,18 @@ export default function VisitForm({
             >
               {isWithinRange === true ? "Re-verify Location" : "Start Check-in"}
             </Button>
+
+            {isWithinRange === false && coords && (
+                <Button 
+                type="button" 
+                variant="outline"
+                onClick={handleRelocate} 
+                isLoading={locationChecking}
+                className="w-full h-12 rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-bold"
+                >
+                Relocate & Check-in
+                </Button>
+            )}
             
             {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
           </div>

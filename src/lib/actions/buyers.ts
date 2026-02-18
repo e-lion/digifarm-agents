@@ -155,3 +155,85 @@ export async function getBuyers(
   }
 }
 
+export interface BuyerOption {
+  id: string
+  name: string
+  contact_name: string | null
+  business_type: string | null
+  value_chain: string | null
+  county: string | null
+  location: { lat: number, lng: number } | null
+}
+
+export async function getBuyersList(search?: string, limit: number = 10): Promise<{ data: BuyerOption[], count: number }> {
+  const supabase = await createClient()
+  
+  // 1. Fetch buyers
+  let query = supabase
+    .from('buyers')
+    .select('id, name, contact_name, business_type, value_chain, county', { count: 'exact' })
+    .order('name')
+    .limit(limit)
+
+  if (search) {
+    query = query.ilike('name', `%${search}%`)
+  }
+    
+  const { data: buyers, count, error } = await query
+    
+  if (error) {
+    console.error('Error fetching buyers list:', error)
+    return { data: [], count: 0 }
+  }
+
+  // 2. Fetch latest visit location for these buyers
+  const buyerNames = buyers.map(b => b.name)
+  const buyerLocations = new Map<string, { lat: number, lng: number }>()
+  
+  if (buyerNames.length > 0) {
+     // We use a simplified query to just get one visit per buyer with coords
+     // Since Supabase doesn't support easy "distinct on" via JS client without RPC sometimes,
+     // we'll fetch visits with coords for these buyers and process in JS.
+     // To optimize, we just look for visits that HAVE polygon_coords.
+     const { data: visits } = await supabase
+        .from('visits')
+        .select('buyer_name, polygon_coords')
+        .in('buyer_name', buyerNames)
+        .not('polygon_coords', 'is', null)
+        .order('created_at', { ascending: false })
+     
+     if (visits) {
+        visits.forEach(visit => {
+            if (!buyerLocations.has(visit.buyer_name) && visit.polygon_coords) {
+                // Extract center. polygon_coords is a GeoJSON-like object or specific structure.
+                // Based on CreateVisitForm, it is created via turf.circle which outputs a Polygon.
+                // Structure: { type: "Polygon", coordinates: [[[lng, lat], ...]] }
+                try {
+                    const coords = visit.polygon_coords.coordinates[0]; // First ring
+                    if (coords && coords.length > 0) {
+                        // Simple average for centroid
+                        let latSum = 0, lngSum = 0;
+                        coords.forEach((c: any) => {
+                            lngSum += c[0];
+                            latSum += c[1];
+                        });
+                        const centerLat = latSum / coords.length;
+                        const centerLng = lngSum / coords.length;
+                        buyerLocations.set(visit.buyer_name, { lat: centerLat, lng: centerLng });
+                    }
+                } catch (e) {
+                    console.warn(`Failed to parse location for ${visit.buyer_name}`, e);
+                }
+            }
+        })
+     }
+  }
+  
+  const mappedBuyers = buyers.map(buyer => ({
+    ...buyer,
+    location: buyerLocations.get(buyer.name) || null
+  })) as BuyerOption[]
+
+  return { data: mappedBuyers, count: count || 0 }
+}
+

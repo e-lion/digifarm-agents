@@ -24,6 +24,17 @@ L.Marker.prototype.options.icon = DefaultIcon
 
 interface RadiusEditorProps {
   onChange: (coords: [number, number] | null) => void
+  value?: [number, number] | null
+}
+
+function MapUpdater({ center }: { center: [number, number] | null }) {
+  const map = useMapEvents({})
+  useEffect(() => {
+    if (center) {
+      map.flyTo(center, map.getZoom())
+    }
+  }, [center, map])
+  return null
 }
 
 function MapEvents({ onClick }: { onClick: (e: L.LeafletMouseEvent) => void }) {
@@ -34,6 +45,7 @@ function MapEvents({ onClick }: { onClick: (e: L.LeafletMouseEvent) => void }) {
     click: onClick
   })
 
+  // ... rest of MapEvents same as before ...
   const handleLocate = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -106,8 +118,14 @@ function MapEvents({ onClick }: { onClick: (e: L.LeafletMouseEvent) => void }) {
   )
 }
 
-export default function RadiusEditor({ onChange }: RadiusEditorProps) {
-  const [point, setPoint] = useState<[number, number] | null>(null)
+export default function RadiusEditor({ onChange, value }: RadiusEditorProps) {
+  const [point, setPoint] = useState<[number, number] | null>(value || null)
+
+  useEffect(() => {
+    if (value) {
+        setPoint(value)
+    }
+  }, [value])
 
   const handleMapClick = (e: L.LeafletMouseEvent) => {
     const newPoint: [number, number] = [e.latlng.lat, e.latlng.lng]
@@ -125,6 +143,7 @@ export default function RadiusEditor({ onChange }: RadiusEditorProps) {
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <MapEvents onClick={handleMapClick} />
+        <MapUpdater center={point} />
         
         {point && (
           <>

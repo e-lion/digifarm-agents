@@ -124,3 +124,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Phone Input Flags & Icons */
+.PhoneInputCountryIcon--border {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.PhoneInputCountryIcon img {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 2px;
+}
+
+.PhoneInputCountry {
+  margin-right: 0.75rem !important;
+}
+
+.PhoneInputCountrySelect {
+  cursor: pointer;
+}

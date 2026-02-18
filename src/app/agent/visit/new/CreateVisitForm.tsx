@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
@@ -12,14 +12,17 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Calendar } from 'lucide-react'
 import { createVisitAction } from '@/lib/actions/visits'
+import { BuyerOption, getBuyersList } from '@/lib/actions/buyers' 
 
-export default function CreateVisitForm() {
+export default function CreateVisitForm({ existingBuyers = [], totalBuyersCount = 0 }: { existingBuyers?: BuyerOption[], totalBuyersCount?: number }) {
   const [loading, setLoading] = useState(false)
   const [selectedPoint, setSelectedPoint] = useState<[number, number] | null>(null)
   const router = useRouter()
   
   const [valueChain, setValueChain] = useState("")
   const [buyerType, setBuyerType] = useState("")
+  const [buyerName, setBuyerName] = useState("")
+  const [selectedBuyerId, setSelectedBuyerId] = useState("")
 
   const KENYAN_VALUE_CHAINS = [
     "Maize", "Tea", "Coffee", "Dairy", "Sugarcane", "Potatoes", "Beans", 
@@ -36,18 +39,72 @@ export default function CreateVisitForm() {
   
   const [county, setCounty] = useState("")
 
+  const [buyerOptions, setBuyerOptions] = useState<BuyerOption[]>(existingBuyers)
+  const [totalOptionsCount, setTotalOptionsCount] = useState(totalBuyersCount)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isSearching, setIsSearching] = useState(false)
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+        if (searchTerm) {
+            setIsSearching(true)
+            try {
+                const { data: results, count } = await getBuyersList(searchTerm)
+                setBuyerOptions(results)
+                setTotalOptionsCount(count)
+            } catch (e) {
+                console.error("Failed to search buyers", e)
+            } finally {
+                setIsSearching(false)
+            }
+        } else {
+            // Reset to initial list if search is cleared
+            setBuyerOptions(existingBuyers)
+            setTotalOptionsCount(totalBuyersCount)
+        }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm, existingBuyers])
+
+  const handleBuyerSelect = (name: string) => {
+    const buyer = buyerOptions.find(b => b.name === name)
+    if (buyer) {
+        setBuyerName(buyer.name)
+        setBuyerType(buyer.business_type || "")
+        setValueChain(buyer.value_chain || "")
+        setCounty(buyer.county || "")
+        setSelectedBuyerId(buyer.id)
+        if (buyer.location) {
+            setSelectedPoint([buyer.location.lat, buyer.location.lng])
+        }
+    } else {
+        // Clear logic if needed, or just set name
+        setBuyerName(name)
+        setSelectedBuyerId("")
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     const formData = new FormData(e.currentTarget)
-    const buyerName = formData.get('buyer_name') as string
+    // buyerName is now in state
     const date = formData.get('date') as string
+
+    if (!buyerName) {
+        alert('Please enter or select a buyer name')
+        setLoading(false)
+        return
+    }
 
     if (!valueChain) {
         alert('Please select a value chain')
         setLoading(false)
         return
     }
+
 
     if (!buyerType) {
         alert('Please select a buyer type')
@@ -104,10 +161,43 @@ export default function CreateVisitForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Buyer Name</label>
-             <Input name="buyer_name" required placeholder="e.g. Upcountry Millers" />
-          </div>
+          
+          {/* Select Previous Buyer */}
+           <div className="relative z-20">
+             <label className="block text-sm font-medium text-gray-700 mb-1">Select Existing Buyer (Optional)</label>
+             <SearchableSelect 
+               options={buyerOptions.map(b => b.name)} 
+               value={selectedBuyerId ? buyerName : ""} 
+               onChange={handleBuyerSelect} 
+               onSearch={setSearchTerm}
+               placeholder="Search previous buyers..."
+               totalCount={totalOptionsCount}
+             />
+             <p className="text-xs text-gray-500 mt-1">Selecting a buyer will auto-fill the details below.</p>
+           </div>
+
+           <div className="relative bg-gray-50/50 p-4 rounded-xl border border-gray-100 space-y-4">
+             <div className="flex items-center gap-2 mb-2">
+                <div className="h-6 w-1 bg-green-500 rounded-full"></div>
+                <h3 className="text-sm font-semibold text-gray-900">Buyer Details</h3>
+             </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Buyer Name</label>
+                <Input 
+                    name="buyer_name" 
+                    required 
+                    placeholder="e.g. Upcountry Millers" 
+                    value={buyerName}
+                    disabled={!!selectedBuyerId}
+                    onChange={(e) => {
+                        setBuyerName(e.target.value)
+                        // If user types manually, clear selected ID to treat as new/custom interaction
+                        if (selectedBuyerId && e.target.value !== buyerName) {
+                            setSelectedBuyerId("")
+                        }
+                    }}
+                />
+             </div>
 
           <div className="relative">
              <label className="block text-sm font-medium text-gray-700 mb-1">Buyer Type</label>
@@ -116,6 +206,7 @@ export default function CreateVisitForm() {
                value={buyerType} 
                onChange={setBuyerType} 
                placeholder="Search buyer types..."
+               disabled={!!selectedBuyerId}
              />
           </div>
           
@@ -126,22 +217,22 @@ export default function CreateVisitForm() {
                value={valueChain} 
                onChange={setValueChain} 
                placeholder="Search value chains..."
+               disabled={!!selectedBuyerId}
              />
              <input type="hidden" name="value_chain" value={valueChain} />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">County</label>
-            <select 
-              value={county}
-              onChange={(e) => setCounty(e.target.value)}
-              required
-              className="flex h-12 w-full rounded-xl border-2 border-gray-100 bg-gray-50/50 px-3 py-2 text-base hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer"
-            >
-              <option value="">Select County</option>
-              {COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <div className="relative">
+             <label className="block text-sm font-medium text-gray-700 mb-1">County</label>
+             <SearchableSelect 
+               options={COUNTIES} 
+               value={county} 
+               onChange={setCounty} 
+               placeholder="Search counties..."
+               disabled={!!selectedBuyerId}
+             />
           </div>
+           </div>
 
           <div>
              <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date & Time</label>
@@ -165,7 +256,7 @@ export default function CreateVisitForm() {
       <Card>
         <CardContent className="pt-6">
            <label className="block text-sm font-medium text-gray-700 mb-2">Location Center (100m Radius)</label>
-           <RadiusEditor onChange={setSelectedPoint} />
+           <RadiusEditor onChange={setSelectedPoint} value={selectedPoint} />
            <p className="text-xs text-gray-500 mt-2">Tap the map to set the center. A 100m radius will automaticallly be applied.</p>
         </CardContent>
       </Card>
