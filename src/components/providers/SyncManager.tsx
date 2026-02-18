@@ -46,8 +46,12 @@ export function SyncManager() {
   }, [])
 
   const checkPending = async () => {
-      const reports = await getOfflineReports()
-      setPendingCount(reports.length)
+      try {
+          const reports = await getOfflineReports()
+          setPendingCount(reports.length)
+      } catch (e) {
+          console.warn("Failed to check offline reports:", e)
+      }
   }
 
   const syncReports = async () => {
