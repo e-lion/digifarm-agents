@@ -20,7 +20,7 @@ export function PhoneInput({ value, onChange, className, placeholder, error }: P
         defaultCountry="KE"
         international
         withCountryCallingCode
-        value={value}
+        value={value || undefined}
         onChange={(val) => onChange(val || '')}
         placeholder={placeholder}
         className={cn(
