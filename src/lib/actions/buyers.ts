@@ -97,14 +97,19 @@ export async function getBuyers(
           : profiles?.email || 'Unknown Agent';
       stats.agents.add(agentName)
       
-      // Update last interaction if newer
-      const interactionTime = visit.completed_at || visit.created_at
-      if (interactionTime) {
-        if (!stats.lastVisit || new Date(interactionTime) > new Date(stats.lastVisit)) {
-            stats.lastVisit = interactionTime
-            stats.latestStatus = visit.status
-            stats.latestAgent = agentName
-            stats.latestScheduled = visit.scheduled_date
+      // 1. Capture absolute latest visit info (planned or completed)
+      // Since visits are ordered by created_at DESC, the first visit we see for this buyer
+      // in the iteration will be the technically "latest" one record-wise.
+      if (!stats.latestStatus) {
+        stats.latestStatus = visit.status
+        stats.latestAgent = agentName
+        stats.latestScheduled = visit.scheduled_date
+      }
+      
+      // 2. Track the latest COMPLETED visit for the physical "Last visited" date
+      if (visit.status === 'completed' && visit.completed_at) {
+        if (!stats.lastVisit || new Date(visit.completed_at) > new Date(stats.lastVisit)) {
+            stats.lastVisit = visit.completed_at
             stats.latestCompleted = visit.completed_at
         }
       }
