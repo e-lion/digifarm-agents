@@ -1,20 +1,86 @@
-import { createClient } from '@/lib/supabase/server'
-import { VisitForm } from '@/components/forms/DynamicVisitForm'
-import AgentLayout from '@/components/layout/AgentLayout'
-import { notFound } from 'next/navigation'
+'use client'
 
-export default async function VisitPage({ params }: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient()
-  const { id } = await params
+import { VisitForm } from '@/components/forms/DynamicVisitForm'
+import { notFound, useSearchParams } from 'next/navigation'
+import { useEffect, useState, use } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { getCachedPlannedVisit, getOfflineNewVisits } from '@/lib/offline-storage'
+import { Loader2 } from 'lucide-react'
+
+export default function VisitPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const searchParams = useSearchParams()
+  const isDraft = searchParams.get('isDraft') === 'true'
   
-  const { data: visit, error } = await supabase
-    .from('visits')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const [visit, setVisit] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadVisit() {
+      try {
+        setLoading(true)
+        
+        // 1. If it's a local draft, get it from new visits store
+        if (isDraft) {
+            const drafts = await getOfflineNewVisits()
+            const draft = drafts.find(d => d.id === id)
+            if (draft) {
+                setVisit(draft)
+                setLoading(false)
+                return
+            }
+        }
+
+        // 2. Try online fetch
+        if (navigator.onLine) {
+            const supabase = createClient()
+            const { data, error: fetchError } = await supabase
+                .from('visits')
+                .select('*')
+                .eq('id', id)
+                .single()
+            
+            if (!fetchError && data) {
+                setVisit(data)
+                setLoading(false)
+                return
+            }
+        }
+
+        // 3. Fallback to cached planned visits
+        const cached = await getCachedPlannedVisit(id)
+        if (cached) {
+            setVisit(cached)
+        } else {
+            setError("Visit not found offline")
+        }
+      } catch (e) {
+        console.error("Failed to load visit:", e)
+        setError("Error loading visit data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadVisit()
+  }, [id, isDraft])
+
+  if (loading) {
+    return (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+             <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+             <p className="text-sm">Loading visit details...</p>
+        </div>
+    )
+  }
 
   if (error || !visit) {
-    notFound()
+    return (
+        <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-100 mx-4">
+            <p className="text-red-500 font-medium">{error || "Visit details unavailable offline."}</p>
+        </div>
+    )
   }
 
   return (

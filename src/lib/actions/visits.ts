@@ -8,6 +8,7 @@ type VisitInsert = Database['public']['Tables']['visits']['Insert']
 type BuyerInsert = Database['public']['Tables']['buyers']['Insert']
 
 export async function createVisitAction(data: {
+  id?: string // Allow pre-generated UUID for offline sync continuity
   buyer_name: string
   buyer_type: string
   value_chain: string
@@ -35,6 +36,7 @@ export async function createVisitAction(data: {
 
   // 2. Insert visit
   const visitData: VisitInsert = {
+    id: data.id as any, // Preserve offline temp ID if provided
     agent_id: user.id,
     buyer_name: data.buyer_name,
     buyer_type: data.buyer_type,

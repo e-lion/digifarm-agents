@@ -13,6 +13,9 @@ import { useRouter } from 'next/navigation'
 import { Calendar } from 'lucide-react'
 import { createVisitAction } from '@/lib/actions/visits'
 import { BuyerOption, getBuyersList } from '@/lib/actions/buyers' 
+import { saveOfflineNewVisit } from '@/lib/offline-storage'
+import { toast } from 'sonner'
+import { v4 as uuidv4 } from 'uuid'
 
 export default function CreateVisitForm({ existingBuyers = [], totalBuyersCount = 0 }: { existingBuyers?: BuyerOption[], totalBuyersCount?: number }) {
   const [loading, setLoading] = useState(false)
@@ -139,20 +142,40 @@ export default function CreateVisitForm({ existingBuyers = [], totalBuyersCount 
         polygonGeometry = circularPolygon.geometry
     }
 
-    const result = await createVisitAction({
+    const payload = {
       buyer_name: buyerName,
       buyer_type: buyerType,
       value_chain: valueChain,
       county: county,
       scheduled_date: date,
       polygon_coords: polygonGeometry
-    })
+    }
+
+    if (!navigator.onLine) {
+       // Save offline
+       const tempId = uuidv4()
+       await saveOfflineNewVisit({
+         ...payload,
+         id: tempId,
+         status: 'planned',
+         isDraft: true, // Marked as local draft
+         agent_id: user.id,
+         created_at: new Date().toISOString()
+       })
+       toast.success("Visit plan saved locally 📡. It will sync when you're back online.")
+       router.push('/agent/routes')
+       setLoading(false)
+       return
+    }
+
+    const result = await createVisitAction(payload)
 
     if (result.error) {
       console.error(result.error)
-      alert(result.error)
+      toast.error(result.error)
     } else {
       router.push('/agent/routes')
+      toast.success("Visit plan created successfully! ⚡")
     }
     setLoading(false)
   }

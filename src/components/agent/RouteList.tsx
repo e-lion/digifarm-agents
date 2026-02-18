@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/Button'
 import { MapPin, Calendar, CheckCircle, ArrowRight, Loader2, Filter, X } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/Input'
-import { getOfflineReports, OfflineVisitReport } from '@/lib/offline-storage'
-import { WifiOff } from 'lucide-react'
+import { getOfflineReports, getOfflineNewVisits, cachePlannedVisits } from '@/lib/offline-storage'
+import { WifiOff, FileText } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
@@ -18,6 +18,7 @@ export function RouteList({ userId }: { userId: string }) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'planned' | 'completed'>('all')
   const [dateFilter, setDateFilter] = useState('')
   const [offlineIds, setOfflineIds] = useState<string[]>([])
+  const [offlineDrafts, setOfflineDrafts] = useState<any[]>([])
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
   const supabase = createClient()
@@ -64,8 +65,11 @@ export function RouteList({ userId }: { userId: string }) {
     try {
       const reports = await getOfflineReports()
       setOfflineIds(reports.map(r => r.id))
+      
+      const drafts = await getOfflineNewVisits()
+      setOfflineDrafts(drafts)
     } catch (e) {
-      console.error("Failed to load offline status:", e)
+      console.error("Failed to load offline data:", e)
     }
   }
 
@@ -93,7 +97,28 @@ export function RouteList({ userId }: { userId: string }) {
     return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  const visits = data?.pages.flat() || []
+  // Cache planned visits when online
+  useEffect(() => {
+    if (navigator.onLine && data?.pages) {
+      const allVisits = data.pages.flat()
+      const planned = allVisits.filter(v => v.status === 'planned')
+      if (planned.length > 0) {
+        cachePlannedVisits(planned)
+      }
+    }
+  }, [data])
+
+  const remoteVisits = data?.pages.flat() || []
+  
+  // Merge drafts into the list
+  // Note: Only show drafts if they match filters
+  const filteredDrafts = offlineDrafts.filter(draft => {
+      if (statusFilter !== 'all' && draft.status !== statusFilter) return false
+      if (dateFilter && draft.scheduled_date.split('T')[0] !== dateFilter) return false
+      return true
+  })
+
+  const visits = [...filteredDrafts, ...remoteVisits]
 
   return (
     <div className="space-y-6">
@@ -178,10 +203,12 @@ export function RouteList({ userId }: { userId: string }) {
           <>
             {visits.map((visit: any) => {
               const isOfflinePending = offlineIds.includes(visit.id)
+              const isDraft = visit.isDraft
               return (
-              <Link key={visit.id} href={`/agent/visit/${visit.id}`} className="block">
+              <Link key={visit.id} href={`/agent/visit/${visit.id}${isDraft ? '?isDraft=true' : ''}`} className="block">
                 <Card className={cn(
                     "overflow-hidden border-l-4 shadow-sm active:scale-[0.98] transition-all hover:shadow-md cursor-pointer",
+                    isDraft ? "border-l-blue-400 bg-blue-50/10" :
                     isOfflinePending ? "border-l-orange-500" : "border-l-green-600"
                 )}>
                   <CardContent className="p-4 flex items-center justify-between">
@@ -198,10 +225,16 @@ export function RouteList({ userId }: { userId: string }) {
                            </span>
                         ) : (
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
+                            isDraft ? 'bg-blue-100 text-blue-700' :
                             visit.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {visit.status}
+                            {isDraft ? 'Offline Draft' : visit.status}
                           </span>
+                        )}
+                        {isDraft && (
+                           <span className="flex items-center gap-1 text-[10px] text-blue-600 font-bold italic">
+                             <FileText className="h-3 w-3" /> Will sync when online
+                           </span>
                         )}
                       </div>
                     </div>

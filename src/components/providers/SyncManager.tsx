@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getOfflineReports, removeOfflineReport, OfflineVisitReport } from '@/lib/offline-storage'
-import { updateVisitAction } from '@/lib/actions/visits'
+import { getOfflineReports, removeOfflineReport, OfflineVisitReport, getOfflineNewVisits, removeOfflineNewVisit } from '@/lib/offline-storage'
+import { updateVisitAction, createVisitAction } from '@/lib/actions/visits'
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus'
 import { toast } from 'sonner'
 
@@ -48,7 +48,8 @@ export function SyncManager() {
   const checkPending = async () => {
       try {
           const reports = await getOfflineReports()
-          setPendingCount(reports.length)
+          const drafts = await getOfflineNewVisits()
+          setPendingCount(reports.length + drafts.length)
       } catch (e) {
           console.warn("Failed to check offline reports:", e)
       }
@@ -88,6 +89,25 @@ export function SyncManager() {
                 }
             } catch (e) {
                 console.error(`Error syncing report ${report.id}`, e)
+            }
+        }
+
+        // --- 2. Sync Offline New Visits (Drafts) ---
+        const drafts = await getOfflineNewVisits()
+        for (const draft of drafts) {
+            try {
+                // Remove internal UI flag and preserve the ID for referential integrity
+                const { isDraft, id: tempId, ...payload } = draft
+                const result = await createVisitAction({ ...payload, id: tempId })
+                
+                if (result.success) {
+                    await removeOfflineNewVisit(tempId)
+                    syncedCount++
+                } else {
+                    console.error(`Failed to sync offline draft ${tempId}:`, result.error)
+                }
+            } catch (e) {
+                console.error(`Error syncing offline draft`, e)
             }
         }
 
