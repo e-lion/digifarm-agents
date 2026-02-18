@@ -37,7 +37,7 @@ export async function getBuyers(
     let query = supabase
       .from('buyers')
       .select('*', { count: 'exact' })
-      .order('name')
+      .order('created_at', { ascending: false })
 
     if (search) {
       const searchPattern = `%${search}%`
