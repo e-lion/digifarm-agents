@@ -1,6 +1,6 @@
 'use client'
 
-import VisitPage from '../[id]/page'
+import { VisitDetails } from '@/components/visit/VisitDetails'
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
@@ -8,16 +8,13 @@ import { Loader2 } from 'lucide-react'
 const VisitDetailsWrapper = () => {
   const searchParams = useSearchParams()
   const id = searchParams.get('id')
-  
-  // Wrap the existing [id] page behavior but force it into draft mode
-  // The id is passed via search params, but we need to mock the "params" expected by the [id] page
-  const mockedParams = Promise.resolve({ id: id as string })
 
   if (!id) {
     return <div className="p-8 text-center text-red-500">No visit ID provided</div>
   }
 
-  return <VisitPage params={mockedParams} />
+  // Directly use the refactored component logic
+  return <VisitDetails id={id} />
 }
 
 export default function VisitDetailsPage() {
