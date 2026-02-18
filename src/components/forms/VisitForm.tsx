@@ -33,7 +33,7 @@ const formSchema = z.object({
   is_potential_customer: z.enum(['Yes', 'No', 'Maybe'], {
     required_error: "Please select if they are a potential customer",
   }),
-  trade_volume: z.number().min(0, 'Must be 0 or more'),
+  trade_volume: z.string().min(1, 'Volume is required'),
   buyer_feedback: z.string().optional(),
 })
 
@@ -236,7 +236,7 @@ export default function VisitForm({
                 </div>
                 <div>
                    <label className="text-xs text-gray-500 uppercase">Trade Volume / Month</label>
-                   <p className="font-medium">{initialData.trade_volume ? `${initialData.trade_volume.toLocaleString()} units` : 'Not specified'}</p>
+                   <p className="font-medium">{initialData.trade_volume || 'Not specified'}</p>
                 </div>
              </div>
              
@@ -495,7 +495,7 @@ export default function VisitForm({
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Trade Volume per Month</label>
-                <Input {...register('trade_volume', { valueAsNumber: true })} type="number" placeholder="e.g. 5000" />
+                <Input {...register('trade_volume')} placeholder="e.g. 5000 units or 10 tons" />
                 {errors.trade_volume && <p className="text-xs text-red-500 mt-1">{errors.trade_volume.message}</p>}
               </div>
 
