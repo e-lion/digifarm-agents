@@ -87,7 +87,8 @@ export async function getBuyers(
         latestStatus: null,
         latestAgent: null,
         latestScheduled: null,
-        latestCompleted: null
+        latestCompleted: null,
+        latestCheckedIn: null
       }
       
       // Add agent name or email
@@ -131,7 +132,8 @@ export async function getBuyers(
         latestStatus: null,
         latestAgent: null,
         latestScheduled: null,
-        latestCompleted: null
+        latestCompleted: null,
+        latestCheckedIn: null
       }
       return {
         ...buyer,
