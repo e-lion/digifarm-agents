@@ -133,7 +133,7 @@ export default function BuyersTable({
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Value Chain</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Location</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider text-center">Engagement</th>
-                <th className="px-6 py-4 uppercase text-xs tracking-wider">Latest Visit</th>
+                <th className="px-6 py-4 uppercase text-xs tracking-wider">Agent Engagement</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Last Interaction</th>
               </tr>
             </thead>
