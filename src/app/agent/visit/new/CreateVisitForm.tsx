@@ -124,13 +124,14 @@ export default function CreateVisitForm({ existingBuyers = [], totalBuyersCount 
 
 
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
 
-    if (!user) {
+    if (!session || !session.user) {
         alert('You must be logged in')
         setLoading(false)
         return
     }
+    const user = session.user
 
     // Convert point [lat, lng] to 100m radius circle polygon
     // turf circle uses [lng, lat]

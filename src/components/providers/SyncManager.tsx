@@ -57,7 +57,8 @@ export function SyncManager() {
 
   const syncReports = async () => {
     const reports = await getOfflineReports()
-    if (reports.length === 0) return
+    const drafts = await getOfflineNewVisits()
+    if (reports.length === 0 && drafts.length === 0) return
 
     setIsSyncing(true)
     let syncedCount = 0
@@ -122,8 +123,9 @@ export function SyncManager() {
 
   const handleClear = async () => {
     if (confirm("Clear all pending syncs? This cannot be undone.")) {
-        const { clearOfflineReports } = await import('@/lib/offline-storage')
+        const { clearOfflineReports, clearOfflineNewVisits } = await import('@/lib/offline-storage')
         await clearOfflineReports()
+        await clearOfflineNewVisits()
         checkPending()
         toast.info("Offline storage cleared.")
     }

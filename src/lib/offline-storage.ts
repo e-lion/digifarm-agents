@@ -59,3 +59,7 @@ export async function removeOfflineNewVisit(tempId: string) {
     const filtered = visits.filter(v => v.id !== tempId)
     await set(NEW_VISITS_STORE_KEY, filtered)
 }
+
+export async function clearOfflineNewVisits() {
+    await del(NEW_VISITS_STORE_KEY)
+}
