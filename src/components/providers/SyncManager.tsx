@@ -82,40 +82,12 @@ export function SyncManager() {
     let syncedCount = 0
 
     try {
-        for (const report of reports) {
+        // --- 1. Sync Offline New Visits (Drafts) FIRST ---
+        // We sync drafts first so that if there are reports for these drafts, 
+        // the visits exist in Supabase before we try to update them.
+        const draftsOnSyncStart = await getOfflineNewVisits()
+        for (const draft of draftsOnSyncStart) {
             try {
-                // Determine if we are creating or updating based on context? 
-                // Creating a visit happens online usually, but here we assume we are inside a visit workflow.
-                // The offline-storage saves "data" which is the form payload.
-                // We call the existing server action.
-                
-                // Note: The action requires buyerName.
-                const result = await updateVisitAction(
-                    report.id, 
-                    report.buyerName, 
-                    report.data, 
-                    report.coords
-                )
-
-                if (result.success) {
-                    await removeOfflineReport(report.id)
-                    syncedCount++
-                } else if (result.code === 'NOT_FOUND') {
-                    console.warn(`Terminal sync error: Report ${report.id} target not found. Purging.`)
-                    await removeOfflineReport(report.id)
-                } else {
-                    console.error(`Failed to sync report ${report.id}:`, result.error)
-                }
-            } catch (e) {
-                console.error(`Error syncing report ${report.id}`, e)
-            }
-        }
-
-        // --- 2. Sync Offline New Visits (Drafts) ---
-        const drafts = await getOfflineNewVisits()
-        for (const draft of drafts) {
-            try {
-                // Remove internal UI flag and preserve the ID for referential integrity
                 const { isDraft, id: tempId, ...payload } = draft
                 const result = await createVisitAction({ ...payload, id: tempId })
                 
@@ -130,8 +102,41 @@ export function SyncManager() {
             }
         }
 
+        // --- 2. Sync Offline Reports ---
+        const remainingReports = await getOfflineReports()
+        const currentDrafts = await getOfflineNewVisits()
+        const currentDraftIds = currentDrafts.map(d => d.id)
+
+        for (const report of remainingReports) {
+            try {
+                const result = await updateVisitAction(
+                    report.id, 
+                    report.buyerName, 
+                    report.data, 
+                    report.coords
+                )
+
+                if (result.success) {
+                    await removeOfflineReport(report.id)
+                    syncedCount++
+                } else if (result.code === 'NOT_FOUND') {
+                    // IMPORTANT: Only purge if this isn't a draft that failed to sync above
+                    if (!currentDraftIds.includes(report.id)) {
+                        console.warn(`Terminal sync error: Report ${report.id} target not found and not in drafts. Purging.`)
+                        await removeOfflineReport(report.id)
+                    } else {
+                        console.info(`Report ${report.id} target not found yet, but it's a pending draft. Skipping for now.`)
+                    }
+                } else {
+                    console.error(`Failed to sync report ${report.id}:`, result.error)
+                }
+            } catch (e) {
+                console.error(`Error syncing report ${report.id}`, e)
+            }
+        }
+
         if (syncedCount > 0) {
-            toast.success(`Synced ${syncedCount} report(s) successfully!`)
+            toast.success(`Synced ${syncedCount} item(s) successfully!`)
             await checkPending()
         }
     } finally {

@@ -205,7 +205,11 @@ export function RouteList({ userId }: { userId: string }) {
               const isOfflinePending = offlineIds.includes(visit.id)
               const isDraft = visit.isDraft
               return (
-              <Link key={visit.id} href={`/agent/visit/${visit.id}${isDraft ? '?isDraft=true' : ''}`} className="block">
+              <Link 
+                key={visit.id} 
+                href={isDraft ? `/agent/visit/draft?id=${visit.id}&isDraft=true` : `/agent/visit/${visit.id}`} 
+                className="block"
+              >
                 <Card className={cn(
                     "overflow-hidden border-l-4 shadow-sm active:scale-[0.98] transition-all hover:shadow-md cursor-pointer",
                     isDraft ? "border-l-blue-400 bg-blue-50/10" :
