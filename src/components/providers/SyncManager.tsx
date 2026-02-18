@@ -18,6 +18,11 @@ export function SyncManager() {
     // Check pending count on mount
     checkPending()
 
+    // Proactive sync on mount if online
+    if (navigator.onLine) {
+        syncReports()
+    }
+
     const handleOnline = () => {
       setIsOnline(true)
       toast.success("Back online!")
@@ -32,13 +37,24 @@ export function SyncManager() {
     // Custom event to trigger a re-check of pending items (e.g. after a new save)
     const handleStorageUpdate = () => {
         checkPending()
+        if (navigator.onLine) {
+            syncReports() // Proactive sync when something new is saved while online
+        }
     }
+
+    // Periodic sync interval (e.g. every 30 seconds) to catch missed events
+    const syncInterval = setInterval(() => {
+        if (navigator.onLine) {
+            syncReports()
+        }
+    }, 30000)
 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     window.addEventListener('offline-storage-updated', handleStorageUpdate)
 
     return () => {
+      clearInterval(syncInterval)
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
       window.removeEventListener('offline-storage-updated', handleStorageUpdate)
@@ -56,6 +72,8 @@ export function SyncManager() {
   }
 
   const syncReports = async () => {
+    if (isSyncing) return
+
     const reports = await getOfflineReports()
     const drafts = await getOfflineNewVisits()
     if (reports.length === 0 && drafts.length === 0) return
