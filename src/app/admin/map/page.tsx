@@ -17,8 +17,8 @@ export default async function GlobalMapPage() {
     // GeoJSON is LngLat, Leaflet is LatLng
     coords: v.polygon_coords.coordinates[0].map((c: any) => [c[1], c[0]]), 
     color: v.status === 'completed' ? 'green' : 'blue',
-    // @ts-ignore - Supabase types join inference can be tricky without generated types
-    name: `${v.buyer_name} (${v.profiles?.full_name || v.profiles?.[0]?.full_name || 'Assigned'})`
+    // @ts-ignore
+    name: `${v.buyer_name} (${v.profiles?.full_name || (Array.isArray(v.profiles) ? v.profiles[0]?.full_name : null) || 'Assigned'})`
   })) || []
 
   // Add markers for completed check-ins
@@ -29,15 +29,18 @@ export default async function GlobalMapPage() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col h-full">
-        <div className="mb-4">
+      <div className="flex flex-col space-y-4">
+        <div>
             <h2 className="text-xl font-bold">Global Visit Map</h2>
+            <p className="text-sm text-gray-500">Overview of all active and completed visits</p>
         </div>
-        <div className="flex-1 min-h-[500px] border border-gray-300 rounded-xl overflow-hidden shadow-sm">
+        
+        <div className="h-[calc(100vh-220px)] md:h-[calc(100vh-180px)] w-full border border-gray-300 rounded-xl overflow-hidden shadow-sm relative z-0">
              <DynamicMap 
                 polygons={polygons} 
                 className="h-full w-full"
                 center={[-1.2921, 36.8219]}
+                zoom={11}
              />
         </div>
       </div>
