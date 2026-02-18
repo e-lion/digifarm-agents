@@ -64,8 +64,7 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
 
   if (buyerError) return { error: buyerError.message }
 
-  // 2. Update visit
-  const { error: visitError } = await supabase
+  const { data: updatedVisit, error: visitError } = await supabase
     .from('visits')
     .update({
       status: 'completed',
@@ -74,8 +73,10 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
       completed_at: new Date().toISOString()
     })
     .eq('id', visitId)
+    .select()
 
   if (visitError) return { error: visitError.message }
+  if (!updatedVisit || updatedVisit.length === 0) return { error: 'Visit not found', code: 'NOT_FOUND' }
 
   revalidatePath('/admin/buyers')
   revalidatePath('/agent/routes')
@@ -94,12 +95,14 @@ export async function recordCheckInAction(visitId: string, coords: {lat: number,
     updateData.polygon_coords = polygon_coords
   }
 
-  const { error } = await supabase
+  const { data: updatedVisit, error } = await supabase
     .from('visits')
     .update(updateData)
     .eq('id', visitId)
+    .select()
 
   if (error) return { error: error.message }
+  if (!updatedVisit || updatedVisit.length === 0) return { error: 'Visit not found', code: 'NOT_FOUND' }
   
   revalidatePath('/admin/buyers')
   revalidatePath('/agent/routes')

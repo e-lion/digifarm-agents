@@ -7,9 +7,10 @@ interface ConnectionStatusProps {
   isOnline: boolean
   isSyncing: boolean
   pendingCount: number
+  onClear?: () => void
 }
 
-export function ConnectionStatus({ isOnline, isSyncing, pendingCount }: ConnectionStatusProps) {
+export function ConnectionStatus({ isOnline, isSyncing, pendingCount, onClear }: ConnectionStatusProps) {
   if (isOnline && pendingCount === 0 && !isSyncing) return null
 
   return (
@@ -32,6 +33,15 @@ export function ConnectionStatus({ isOnline, isSyncing, pendingCount }: Connecti
            <>
             <RefreshCw className="h-3 w-3" />
             <span>{pendingCount} report{pendingCount !== 1 ? 's' : ''} waiting to sync</span>
+            <button 
+              onClick={(e) => {
+                e.preventDefault()
+                onClear?.()
+              }}
+              className="ml-2 underline hover:text-white/80"
+            >
+              Clear
+            </button>
           </>
         ) : null}
       </div>

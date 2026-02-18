@@ -80,6 +80,9 @@ export function SyncManager() {
                 if (result.success) {
                     await removeOfflineReport(report.id)
                     syncedCount++
+                } else if (result.code === 'NOT_FOUND') {
+                    console.warn(`Terminal sync error: Report ${report.id} target not found. Purging.`)
+                    await removeOfflineReport(report.id)
                 } else {
                     console.error(`Failed to sync report ${report.id}:`, result.error)
                 }
@@ -97,5 +100,14 @@ export function SyncManager() {
     }
   }
 
-  return <ConnectionStatus isOnline={isOnline} isSyncing={isSyncing} pendingCount={pendingCount} />
+  const handleClear = async () => {
+    if (confirm("Clear all pending syncs? This cannot be undone.")) {
+        const { clearOfflineReports } = await import('@/lib/offline-storage')
+        await clearOfflineReports()
+        checkPending()
+        toast.info("Offline storage cleared.")
+    }
+  }
+
+  return <ConnectionStatus isOnline={isOnline} isSyncing={isSyncing} pendingCount={pendingCount} onClear={handleClear} />
 }
