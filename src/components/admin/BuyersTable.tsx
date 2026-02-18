@@ -74,7 +74,7 @@ export default function BuyersTable({
             `"${b.agent_names.join(', ')}"`,
             `"${b.latest_visit_agent_name || ''}"`,
             `"${b.latest_visit_status || ''}"`,
-            b.latest_visit_scheduled_date ? new Date(b.latest_visit_scheduled_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
+            b.latest_visit_scheduled_date ? new Date(b.latest_visit_scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
             b.last_visited ? new Date(b.last_visited).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
         ].join(','))
         ].join('\n')
@@ -214,11 +214,10 @@ export default function BuyersTable({
                             {buyer.latest_visit_scheduled_date && (
                               <span className="text-[10px] text-gray-400 flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {new Date(buyer.latest_visit_scheduled_date).toLocaleString('en-GB', { 
+                                {new Date(buyer.latest_visit_scheduled_date).toLocaleDateString('en-GB', { 
                                   day: '2-digit', 
-                                  month: 'short', 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
+                                  month: 'short',
+                                  year: 'numeric'
                                 })}
                               </span>
                             )}
