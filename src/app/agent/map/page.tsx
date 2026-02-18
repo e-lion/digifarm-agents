@@ -32,13 +32,19 @@ export default async function AgentMapPage() {
     name: v.buyer_name
   })) || []
 
+  // Collect all points to calculate bounds
+  const allPoints = mapPolygons.flatMap(p => p.coords)
+  const hasPolygons = allPoints.length > 0
+  
   return (
     <AgentLayout>
-      <div className="h-[calc(100vh-140px)] w-full rounded-lg overflow-hidden border border-gray-200 shadow-sm relative z-0">
+      <div className="h-[calc(100vh-180px)] w-full rounded-lg overflow-hidden border border-gray-200 shadow-sm relative z-0">
          <Map 
            polygons={mapPolygons} 
            zoom={11}
            className="h-full w-full"
+           bounds={hasPolygons ? allPoints : null}
+           autoLocate={!hasPolygons}
          />
          
          <div className="absolute top-4 right-4 bg-white/90 p-2 rounded shadow text-xs z-[1000]">

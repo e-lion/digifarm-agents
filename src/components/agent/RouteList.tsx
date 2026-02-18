@@ -136,7 +136,7 @@ export function RouteList({ userId }: { userId: string }) {
     </div>
 
       {/* List Section */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {status === 'pending' ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
              <Loader2 className="h-8 w-8 animate-spin text-green-600" />
@@ -158,30 +158,30 @@ export function RouteList({ userId }: { userId: string }) {
         ) : (
           <>
             {visits.map((visit: any) => (
-              <Card key={visit.id} className="overflow-hidden border-l-4 border-l-green-600 shadow-sm active:scale-[0.98] transition-transform">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="space-y-2">
-                    <h3 className="font-bold text-gray-900 text-lg leading-tight">{visit.buyer_name}</h3>
-                    <div className="flex flex-wrap items-center text-sm text-gray-500 gap-x-4 gap-y-1">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-green-600" />
-                        {new Date(visit.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
-                        visit.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {visit.status}
-                      </span>
+              <Link key={visit.id} href={`/agent/visit/${visit.id}`} className="block">
+                <Card className="overflow-hidden border-l-4 border-l-green-600 shadow-sm active:scale-[0.98] transition-all hover:shadow-md hover:border-l-green-700 cursor-pointer">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="space-y-2">
+                      <h3 className="font-bold text-gray-900 text-lg leading-tight">{visit.buyer_name}</h3>
+                      <div className="flex flex-wrap items-center text-sm text-gray-500 gap-x-4 gap-y-1">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-green-600" />
+                          {new Date(visit.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
+                          visit.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {visit.status}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <Link href={`/agent/visit/${visit.id}`}>
-                    <Button size="sm" variant="outline" className="h-10 w-10 p-0 rounded-full border-gray-200">
+                    
+                    <Button size="sm" variant="outline" className="h-10 w-10 p-0 rounded-full border-gray-200 group-hover:border-green-200 group-hover:bg-green-50">
                       <ArrowRight className="h-5 w-5 text-green-600" />
                     </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
 
             {/* Loading Indicator for scroll */}

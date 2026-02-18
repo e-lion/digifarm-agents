@@ -30,13 +30,25 @@ interface MapProps {
   markers?: { id: string; position: [number, number]; popup?: string }[]
   className?: string
   hideLocate?: boolean
+  bounds?: [number, number][] | null
+  autoLocate?: boolean
 }
 
-function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
+function MapUpdater({ center, zoom, bounds }: { center: [number, number]; zoom: number; bounds?: [number, number][] | null }) {
   const map = useMap()
+  
   useEffect(() => {
+    if (bounds && bounds.length > 0) {
+        // Create a LatLngBounds object from the points
+        const latLngBounds = L.latLngBounds(bounds.map(c => L.latLng(c[0], c[1])))
+        if (latLngBounds.isValid()) {
+            map.fitBounds(latLngBounds, { padding: [50, 50] })
+            return
+        }
+    }
+    // Fallback to center/zoom if no valid bounds
     map.setView(center, zoom)
-  }, [center, zoom, map])
+  }, [center, zoom, bounds, map])
   return null
 }
 
@@ -130,13 +142,26 @@ function LocateControl() {
   )
 }
 
+function AutoLocator({ enabled }: { enabled: boolean }) {
+    const map = useMap()
+    useEffect(() => {
+        if (enabled) {
+            console.log("Auto-locating...")
+            map.locate({ setView: true, maxZoom: 16 })
+        }
+    }, [enabled, map])
+    return null
+}
+
 export default function Map({ 
   center = [-1.2921, 36.8219], 
   zoom = 13, 
   polygons = [], 
   markers = [], 
   className,
-  hideLocate = false
+  hideLocate = false,
+  bounds,
+  autoLocate = false
 }: MapProps) {
   return (
     <MapContainer 
@@ -150,7 +175,8 @@ export default function Map({
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MapUpdater center={center} zoom={zoom} />
+      <MapUpdater center={center} zoom={zoom} bounds={bounds} />
+      <AutoLocator enabled={autoLocate} />
       {!hideLocate && <LocateControl />}
       {polygons.map((poly) => (
         <Polygon key={poly.id} positions={poly.coords} pathOptions={{ color: poly.color || 'blue' }}>

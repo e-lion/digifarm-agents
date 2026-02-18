@@ -132,7 +132,7 @@ export function SearchableSelect({
             
             <div className="mt-2 border-t border-gray-50 pt-2 px-1 pb-1">
               <p className="text-[10px] text-center text-gray-400 uppercase tracking-widest font-bold">
-                 {options.length} Varieties Available
+                 {options.length} Options Available
               </p>
             </div>
           </div>

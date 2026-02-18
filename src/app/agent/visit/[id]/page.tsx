@@ -27,6 +27,7 @@ export default async function VisitPage({ params }: { params: Promise<{ id: stri
       <VisitForm 
         visitId={visit.id} 
         buyerName={visit.buyer_name} 
+        buyerType={visit.buyer_type}
         targetPolygon={visit.polygon_coords} 
         initialData={visit.visit_details}
         status={visit.status}

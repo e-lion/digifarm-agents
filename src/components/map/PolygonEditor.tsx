@@ -114,7 +114,7 @@ export default function PolygonEditor({ onChange }: PolygonEditorProps) {
   }
 
   return (
-    <div className="relative h-[400px] w-full border rounded-lg overflow-hidden">
+    <div className="relative h-[400px] w-full border rounded-lg overflow-hidden mb-8 md:mb-0">
       <MapContainer 
         center={[-1.2921, 36.8219]} 
         zoom={13} 

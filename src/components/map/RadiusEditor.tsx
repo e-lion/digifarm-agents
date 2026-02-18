@@ -116,7 +116,7 @@ export default function RadiusEditor({ onChange }: RadiusEditorProps) {
   }
 
   return (
-    <div className="relative h-[400px] w-full border rounded-xl overflow-hidden shadow-inner">
+    <div className="relative h-[400px] w-full border rounded-xl overflow-hidden shadow-inner mb-8 md:mb-0">
       <MapContainer 
         center={[-1.2921, 36.8219]} 
         zoom={13} 
