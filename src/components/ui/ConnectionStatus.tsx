@@ -1,6 +1,6 @@
 'use client'
 
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react'
+import { WifiOff, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ConnectionStatusProps {
@@ -15,7 +15,7 @@ export function ConnectionStatus({ isOnline, isSyncing, pendingCount, onClear }:
 
   return (
     <div className={cn(
-      "fixed top-14 left-0 right-0 z-30 flex items-center justify-center py-1 px-4 text-xs font-semibold transition-all duration-300",
+      "w-full flex items-center justify-center py-2 px-4 text-xs font-semibold transition-all duration-300",
       !isOnline ? "bg-red-500 text-white" : "bg-blue-600 text-white"
     )}>
       <div className="flex items-center gap-2">

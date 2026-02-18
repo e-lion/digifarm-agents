@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Map from '@/components/map/DynamicMap' // Use DynamicMap to avoid SSR issues
-import AgentLayout from '@/components/layout/AgentLayout'
+
 
 export default async function AgentMapPage() {
   const supabase = await createClient()
@@ -27,6 +27,7 @@ export default async function AgentMapPage() {
     // If using `polygon(targetPolygon.coordinates)` in Turf, it expects GeoJSON.
     
     // Let's safely handle 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     coords: v.polygon_coords?.coordinates?.[0]?.map((c: any) => [c[1], c[0]]) || [],
     color: v.status === 'completed' ? 'green' : 'blue',
     name: v.buyer_name

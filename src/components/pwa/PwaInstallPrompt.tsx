@@ -1,18 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Share, PlusSquare, Download, Smartphone } from 'lucide-react'
+import { X, Share, PlusSquare, Download } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
-import { cn } from '@/lib/utils'
 
 export function PwaInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [platform, setPlatform] = useState<'ios' | 'android' | 'other'>('other')
 
   useEffect(() => {
     // 1. Check if already installed
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone
     if (isStandalone) return
 
@@ -26,6 +27,7 @@ export function PwaInstallPrompt() {
     // 3. Platform detection
     const userAgent = window.navigator.userAgent.toLowerCase()
     if (/iphone|ipad|ipod/.test(userAgent)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPlatform('ios')
       // Show prompt after a short delay on iOS
       const timer = setTimeout(() => setShowPrompt(true), 3000)
@@ -33,6 +35,7 @@ export function PwaInstallPrompt() {
     }
 
     // 4. Listen for native prompt on Android/Chrome
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handler = (e: any) => {
       e.preventDefault()
       setDeferredPrompt(e)

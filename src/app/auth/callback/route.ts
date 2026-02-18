@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       // Admin Gate Check
       const { data: { user } } = await supabase.auth.getUser()
       if (user?.email) {
-        const { data: access, error: accessError } = await supabase
+        const { data: access } = await supabase
           .from('profile_access')
           .select('role')
           .eq('email', user.email) // Note: In production you might want .ilike() but verify DB collation

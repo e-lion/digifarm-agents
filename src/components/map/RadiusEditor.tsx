@@ -123,6 +123,7 @@ export default function RadiusEditor({ onChange, value }: RadiusEditorProps) {
 
   useEffect(() => {
     if (value) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPoint(value)
     }
   }, [value])

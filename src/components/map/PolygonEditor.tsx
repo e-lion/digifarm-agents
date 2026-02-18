@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
-import { Trash2, Check } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
 // Fix icons
 const iconUrl = '/marker-icon.png?v=1'

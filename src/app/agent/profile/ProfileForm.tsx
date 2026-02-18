@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react'
 import { updateProfile } from './actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+
 import { User, Phone, Mail, Shield, Pencil, Save, X } from 'lucide-react'
 
 type ProfileData = {

@@ -8,11 +8,11 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-40">
         <h1 className="text-lg font-bold text-gray-900">DigiFarm Agent</h1>
       </header>
+      <SyncManager />
       <main className="p-4 space-y-4">
         {children}
       </main>
       <MobileNav />
-      <SyncManager />
     </div>
   )
 }

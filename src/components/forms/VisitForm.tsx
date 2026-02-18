@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -8,13 +8,11 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PhoneInput, isValidPhoneNumber } from '@/components/ui/PhoneInput'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Loader2, MapPin, CheckCircle, XCircle, WifiOff } from 'lucide-react'
+import { MapPin, CheckCircle, XCircle, WifiOff } from 'lucide-react'
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 import { point, polygon } from '@turf/helpers'
 import circle from '@turf/circle'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { updateVisitAction, recordCheckInAction } from '@/lib/actions/visits'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
@@ -47,23 +45,30 @@ export default function VisitForm({
   targetPolygon,
   initialData,
   status,
-  checkInLocation
+  checkInLocation,
+  isLocal
 }: { 
   visitId: string, 
   buyerName: string, 
   buyerType?: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   targetPolygon: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialData?: any,
   status?: string,
-  checkInLocation?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  checkInLocation?: any,
+  isLocal?: boolean
 }) {
   const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null)
   const [locationChecking, setLocationChecking] = useState(false)
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isOfflineSaved, setIsOfflineSaved] = useState(false)
   const router = useRouter()
 
   // Helper to parse check_in_location from Supabase (can be WKT string or GeoJSON object)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsePoint = (pt: any) => {
     if (!pt) return null
     
@@ -124,6 +129,7 @@ export default function VisitForm({
   const savedCoords = parsePoint(checkInLocation)
 
   // Helper to get center of polygon for map default view
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getPolygonCenter = (poly: any): [number, number] => {
     try {
       const coords = poly.coordinates?.[0] || poly[0]
@@ -131,14 +137,40 @@ export default function VisitForm({
         // Return first point as a fallback center
         return [coords[0][1], coords[0][0]]
       }
-    } catch (e) {}
+    } catch {}
     return [-1.2921, 36.8219] // Nairobi fallback
   }
+
+  // Helper to format polygon for our Map component
+  const mapPolygons = targetPolygon ? [{
+    id: 'target',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    coords: targetPolygon.coordinates?.[0]?.map((c: any) => [c[1], c[0]]) || targetPolygon[0]?.map((c: any) => [c[1], c[0]]),
+    color: isWithinRange === true ? '#16a34a' : '#dc2626',
+    name: 'Designated Area'
+  }] : []
+
+  // Helper for agent marker
+  const mapMarkers = coords ? [{
+    id: 'agent',
+    position: [coords.lat, coords.lng] as [number, number],
+    popup: 'Your Location'
+  }] : []
+
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      ...initialData,
+      phone: initialData?.phone || '', // Ensure default value to avoid uncontrolled error
+      agsi_business_type: initialData?.agsi_business_type || buyerType || ""
+    }
+  })
 
   // If completed, show summary
   if (status === 'completed' && initialData) {
     const summaryPolygons = targetPolygon ? [{
       id: 'target',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       coords: targetPolygon.coordinates?.[0]?.map((c: any) => [c[1], c[0]]) || targetPolygon[0]?.map((c: any) => [c[1], c[0]]),
       color: '#16a34a',
       name: 'Designated Area'
@@ -237,28 +269,11 @@ export default function VisitForm({
   }
 
   // Helper to format polygon for our Map component
-  const mapPolygons = targetPolygon ? [{
-    id: 'target',
-    coords: targetPolygon.coordinates?.[0]?.map((c: any) => [c[1], c[0]]) || targetPolygon[0]?.map((c: any) => [c[1], c[0]]),
-    color: isWithinRange === true ? '#16a34a' : '#dc2626',
-    name: 'Designated Area'
-  }] : []
 
-  // Helper for agent marker
-  const mapMarkers = coords ? [{
-    id: 'agent',
-    position: [coords.lat, coords.lng] as [number, number],
-    popup: 'Your Location'
-  }] : []
 
-  const { register, handleSubmit, setValue, watch, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      ...initialData,
-      phone: initialData?.phone || '', // Ensure default value to avoid uncontrolled error
-      agsi_business_type: initialData?.agsi_business_type || buyerType || ""
-    }
-  })
+
+
+
   
 
   // ... checkLocation remains same ...
@@ -286,14 +301,14 @@ export default function VisitForm({
             const center = point([longitude, latitude])
             const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
             
-            if (navigator.onLine) {
+            if (navigator.onLine && !isLocal) {
                 recordCheckInAction(visitId, { lat: latitude, lng: longitude }, circularPolygon.geometry)
             } else {
                 toast.info("Working offline. Location verified locally.")
             }
         } catch (e) {
             console.error("Error generating on-site polygon:", e)
-            if (navigator.onLine) {
+            if (navigator.onLine && !isLocal) {
                 recordCheckInAction(visitId, { lat: latitude, lng: longitude })
             }
         }
@@ -308,7 +323,7 @@ export default function VisitForm({
         setIsWithinRange(isInside)
         
         if (isInside) {
-          if (navigator.onLine) {
+          if (navigator.onLine && !isLocal) {
             recordCheckInAction(visitId, { lat: latitude, lng: longitude })
           } else {
              toast.info("Working offline. Location verified locally.")
@@ -321,7 +336,7 @@ export default function VisitForm({
       setLocationChecking(false)
     }
 
-    const onLocationError = (err: GeolocationPositionError) => {
+    const onLocationError = () => {
       navigator.geolocation.getCurrentPosition(
         onLocationSuccess,
         (err2) => {
@@ -346,8 +361,9 @@ export default function VisitForm({
         const center = point([coords.lng, coords.lat])
         const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
         
-        let result = { success: true, error: null as any }
-        if (navigator.onLine) {
+        let result: { success: boolean; error: string | null } = { success: true, error: null }
+        if (navigator.onLine && !isLocal) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             result = await recordCheckInAction(visitId, coords, circularPolygon.geometry) as any
         } else {
             toast.info("Relocated locally while offline.")
@@ -358,6 +374,7 @@ export default function VisitForm({
         } else {
             setIsWithinRange(true)
         }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
         setError(`Relocation Failed: ${e.message}`)
     } finally {
@@ -383,7 +400,7 @@ export default function VisitForm({
               icon: <WifiOff className="h-5 w-5 text-orange-500" />
           })
           
-          router.push('/agent/routes')
+          setIsOfflineSaved(true)
       } catch (e) {
           console.error("Failed to save offline", e)
           alert("Failed to save report. Please try again.")
@@ -391,8 +408,8 @@ export default function VisitForm({
   }
 
   const onSubmit = async (data: FormValues) => {
-    // 1. Explicit Offline Check
-    if (!navigator.onLine) {
+    // 1. Explicit Offline Check (or Local Draft)
+    if (!navigator.onLine || isLocal) {
         await handleOfflineSave(data)
         return
     }
@@ -412,7 +429,23 @@ export default function VisitForm({
         console.warn("Online submission failed, falling back to offline save", e)
         toast.info("Connection unstable. Saving locally instead.")
         await handleOfflineSave(data)
-    }
+    }  }
+
+  if (isOfflineSaved) {
+    return (
+        <div className="flex flex-col items-center justify-center p-8 text-center space-y-6 animate-in fade-in duration-500">
+            <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
+                <WifiOff className="h-10 w-10 text-green-600" />
+            </div>
+            <div className="space-y-2">
+                <h3 className="text-xl font-bold text-gray-900">Report Saved Offline</h3>
+                <p className="text-gray-500 max-w-xs mx-auto">Your visit report has been saved to the outbox and will sync automatically when you are back online.</p>
+            </div>
+            <Button onClick={() => router.push('/agent/routes')} className="w-full h-12 rounded-xl font-bold">
+                Back to Routes
+            </Button>
+        </div>
+    )
   }
 
   return (

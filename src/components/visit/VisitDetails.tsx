@@ -1,20 +1,21 @@
 'use client'
 
 import { VisitForm } from '@/components/forms/DynamicVisitForm'
-import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedPlannedVisit, getOfflineNewVisits } from '@/lib/offline-storage'
 import { Loader2 } from 'lucide-react'
 
 export function VisitDetails({ id }: { id: string }) {
-  const searchParams = useSearchParams()
+
   // const isDraft = searchParams.get('isDraft') === 'true' // Optional: if still needed for initial check
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visit, setVisit] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [loadingStatus, setLoadingStatus] = useState("Loading...")
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [availableDrafts, setAvailableDrafts] = useState<any[]>([])
 
   useEffect(() => {
@@ -32,27 +33,28 @@ export function VisitDetails({ id }: { id: string }) {
         const cleanId = id?.trim()
         console.log("Checking drafts for ID:", cleanId, "Found:", drafts.length)
         
-        const draft = drafts.find(d => d.id === cleanId)
-        if (draft) {
-            console.log("Draft found:", draft)
-            // Map flat draft fields to structural visit_details for the form
-            // Ensure we handle both structure types if needed, but for now map flat to nested
-            const mappedDraft = {
-                ...draft,
-                visit_details: draft.visit_details || {
-                    contact_name: draft.contact_name,
-                    phone: draft.phone,
-                    active_farmers: draft.active_farmers,
-                    is_potential_customer: draft.is_potential_customer,
-                    trade_volume: draft.trade_volume,
-                    buyer_feedback: draft.buyer_feedback,
-                    agsi_business_type: draft.agsi_business_type
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const draft = drafts.find((d: any) => d.id === cleanId) as any
+            if (draft) {
+                console.log("Draft found:", draft)
+                // Map flat draft fields to structural visit_details for the form
+                const mappedDraft = {
+                    ...draft,
+                    isLocal: true, // Mark as local for the form
+                    visit_details: draft.visit_details || {
+                        contact_name: draft.contact_name,
+                        phone: draft.phone,
+                        active_farmers: draft.active_farmers,
+                        is_potential_customer: draft.is_potential_customer,
+                        trade_volume: draft.trade_volume,
+                        buyer_feedback: draft.buyer_feedback,
+                        agsi_business_type: draft.agsi_business_type
+                    }
                 }
+                setVisit(mappedDraft)
+                setLoading(false)
+                return
             }
-            setVisit(mappedDraft)
-            setLoading(false)
-            return
-        }
 
         // 2. Try online fetch with timeout
         if (navigator.onLine) {
@@ -72,6 +74,7 @@ export function VisitDetails({ id }: { id: string }) {
                     .single()
                 
                 // Race against timeout
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const { data, error: fetchError } = await Promise.race([fetchPromise, timeoutPromise]) as any
                 
                 if (!fetchError && data) {
@@ -79,7 +82,7 @@ export function VisitDetails({ id }: { id: string }) {
                     setLoading(false)
                     return
                 }
-            } catch (e) {
+            } catch {
                 console.warn("Server fetch timed out or failed, falling back to cache")
             }
         }
@@ -166,6 +169,7 @@ export function VisitDetails({ id }: { id: string }) {
         initialData={visit.visit_details}
         status={visit.status}
         checkInLocation={visit.check_in_location}
+        isLocal={visit.isLocal}
       />
     </>
   )

@@ -14,6 +14,7 @@ export async function createVisitAction(data: {
   value_chain: string
   county: string
   scheduled_date: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   polygon_coords: any
 }) {
   const supabase = await createClient()
@@ -36,6 +37,7 @@ export async function createVisitAction(data: {
 
   // 2. Insert visit
   const visitData: VisitInsert = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     id: data.id as any, // Preserve offline temp ID if provided
     agent_id: user.id,
     buyer_name: data.buyer_name,
@@ -53,6 +55,7 @@ export async function createVisitAction(data: {
   return { success: true }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateVisitAction(visitId: string, buyerName: string, data: any, coords: {lat: number, lng: number} | null) {
   const supabase = await createClient()
 
@@ -85,9 +88,11 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
   return { success: true }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function recordCheckInAction(visitId: string, coords: {lat: number, lng: number}, polygon_coords?: any) {
   const supabase = await createClient()
-
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: any = {
     checked_in_at: new Date().toISOString(),
     check_in_location: `POINT(${coords.lng} ${coords.lat})`

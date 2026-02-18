@@ -1,6 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import AdminLayout from '@/components/layout/AdminLayout'
 import DynamicMap from '@/components/map/DynamicMap' // Direct import, DynamicMap handles ssr: false internally
 
@@ -15,9 +13,10 @@ export default async function GlobalMapPage() {
   const polygons = visits?.filter(v => v.polygon_coords).map(v => ({
     id: v.id,
     // GeoJSON is LngLat, Leaflet is LatLng
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     coords: v.polygon_coords.coordinates[0].map((c: any) => [c[1], c[0]]), 
     color: v.status === 'completed' ? 'green' : 'blue',
-    // @ts-ignore
+    // @ts-expect-error type inference from profiles is tricky
     name: `${v.buyer_name} (${v.profiles?.full_name || (Array.isArray(v.profiles) ? v.profiles[0]?.full_name : null) || 'Assigned'})`
   })) || []
 

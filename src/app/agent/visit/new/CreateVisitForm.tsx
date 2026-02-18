@@ -49,21 +49,17 @@ export default function CreateVisitForm({ existingBuyers = [], totalBuyersCount 
   const [buyerOptions, setBuyerOptions] = useState<BuyerOption[]>(existingBuyers)
   const [totalOptionsCount, setTotalOptionsCount] = useState(totalBuyersCount)
   const [searchTerm, setSearchTerm] = useState("")
-  const [isSearching, setIsSearching] = useState(false)
 
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(async () => {
         if (searchTerm) {
-            setIsSearching(true)
             try {
                 const { data: results, count } = await getBuyersList(searchTerm)
                 setBuyerOptions(results)
                 setTotalOptionsCount(count)
             } catch (e) {
                 console.error("Failed to search buyers", e)
-            } finally {
-                setIsSearching(false)
             }
         } else {
             // Reset to initial list if search is cleared
@@ -73,7 +69,7 @@ export default function CreateVisitForm({ existingBuyers = [], totalBuyersCount 
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [searchTerm, existingBuyers])
+  }, [searchTerm, existingBuyers, totalBuyersCount])
 
   const handleBuyerSelect = (name: string) => {
     const buyer = buyerOptions.find(b => b.name === name)
@@ -273,6 +269,7 @@ export default function CreateVisitForm({ existingBuyers = [], totalBuyersCount 
                 type="datetime-local" 
                 required 
                 min={new Date().toISOString().slice(0, 16)}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onClick={(e) => (e.target as any).showPicker?.()}
                 className="pl-11 h-12 rounded-xl border-2 border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer [appearance:none] [&::-webkit-calendar-picker-indicator]:hidden text-base"
                />

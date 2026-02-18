@@ -54,6 +54,7 @@ export async function getBuyers(
     // 2. Fetch visits ONLY for the fetched buyers to aggregate stats
     const buyerNames = buyers.map(b => b.name)
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let visits: any[] = []
     if (buyerNames.length > 0) {
         const { data: visitsData, error: visitsError } = await supabase
@@ -63,6 +64,7 @@ export async function getBuyers(
         .order('created_at', { ascending: false })
 
         if (visitsError) throw visitsError
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         visits = visitsData as any[]
     }
 
@@ -149,9 +151,9 @@ export async function getBuyers(
     })
 
     return { buyers: result, totalCount: count || 0, error: null }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Error fetching buyers:', e)
-    return { buyers: [], totalCount: 0, error: e.message }
+    return { buyers: [], totalCount: 0, error: (e as Error).message || 'Unknown error' }
   }
 }
 
@@ -213,6 +215,7 @@ export async function getBuyersList(search?: string, limit: number = 10): Promis
                     if (coords && coords.length > 0) {
                         // Simple average for centroid
                         let latSum = 0, lngSum = 0;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         coords.forEach((c: any) => {
                             lngSum += c[0];
                             latSum += c[1];

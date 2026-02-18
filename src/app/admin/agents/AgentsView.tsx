@@ -22,6 +22,7 @@ interface Visit {
     scheduled_date: string
     completed_at: string | null
     checked_in_at: string | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     check_in_location: any
 }
 
@@ -52,7 +53,6 @@ interface AgentsViewProps {
 
 export function AgentsView({ agentsWithMetrics, whitelistedAgents, addAgentAction, startDate, endDate }: AgentsViewProps) {
   const [activeTab, setActiveTab] = useState<'performance' | 'access'>('performance')
-  const [selectedAgentVisits, setSelectedAgentVisits] = useState<{name: string, visits: Visit[]} | null>(null)
   
   const router = useRouter()
   const pathname = usePathname()

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import AgentLayout from '@/components/layout/AgentLayout'
+
 import { RouteList } from '@/components/agent/RouteList'
 import { redirect } from 'next/navigation'
 

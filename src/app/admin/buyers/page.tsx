@@ -1,8 +1,9 @@
 import { Suspense } from 'react'
 import { getBuyers } from '@/lib/actions/buyers'
 import BuyersTable from '@/components/admin/BuyersTable'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Users2, AlertCircle } from 'lucide-react'
+
+import { Card, CardContent } from '@/components/ui/Card'
+import { AlertCircle } from 'lucide-react'
 import AdminLayout from '@/components/layout/AdminLayout'
 
 export default async function AdminBuyersPage({

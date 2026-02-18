@@ -1,9 +1,9 @@
-import { get, set, del, values } from 'idb-keyval'
+import { get, set, del } from 'idb-keyval'
 
 export interface OfflineVisitReport {
   id: string // UUID of the visit
   buyerName: string
-  data: any // The form data
+  data: Record<string, unknown> // The form data
   coords: { lat: number, lng: number } | null
   timestamp: number
 }
@@ -34,27 +34,29 @@ export async function clearOfflineReports() {
 }
 
 // --- Planned Visits Cache ---
-export async function cachePlannedVisits(visits: any[]) {
+export async function cachePlannedVisits(visits: unknown[]) {
     await set(PLANNED_STORE_KEY, visits)
 }
 
 export async function getCachedPlannedVisit(id: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const visits = (await get<any[]>(PLANNED_STORE_KEY)) || []
     return visits.find(v => v.id === id)
 }
 
 // --- Offline New Visits ---
-export async function saveOfflineNewVisit(visit: any) {
-    const visits = (await get<any[]>(NEW_VISITS_STORE_KEY)) || []
+export async function saveOfflineNewVisit(visit: unknown) {
+    const visits = (await get<unknown[]>(NEW_VISITS_STORE_KEY)) || []
     visits.push(visit)
     await set(NEW_VISITS_STORE_KEY, visits)
 }
 
 export async function getOfflineNewVisits() {
-    return (await get<any[]>(NEW_VISITS_STORE_KEY)) || []
+    return (await get<unknown[]>(NEW_VISITS_STORE_KEY)) || []
 }
 
 export async function removeOfflineNewVisit(tempId: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const visits = (await get<any[]>(NEW_VISITS_STORE_KEY)) || []
     const filtered = visits.filter(v => v.id !== tempId)
     await set(NEW_VISITS_STORE_KEY, filtered)

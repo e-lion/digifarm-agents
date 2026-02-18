@@ -56,6 +56,7 @@ export default async function AgentsPage({
     // Filter visits for the selected date range
     const visits = agent.visits || []
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dailyVisits = visits.filter((v: any) => {
         if (!v.scheduled_date) return false
         try {
@@ -68,7 +69,9 @@ export default async function AgentsPage({
     })
 
     const totalVisits = dailyVisits.length
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const completedVisits = dailyVisits.filter((v: any) => v.status === 'completed').length
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const verifiedVisits = dailyVisits.filter((v: any) => v.status === 'completed' && v.check_in_location).length
     const completionRate = totalVisits > 0 ? Math.round((completedVisits / totalVisits) * 100) : 0
     

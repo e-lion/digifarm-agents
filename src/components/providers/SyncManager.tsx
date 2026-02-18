@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getOfflineReports, removeOfflineReport, OfflineVisitReport, getOfflineNewVisits, removeOfflineNewVisit } from '@/lib/offline-storage'
+import { getOfflineReports, removeOfflineReport, getOfflineNewVisits, removeOfflineNewVisit } from '@/lib/offline-storage'
 import { updateVisitAction, createVisitAction } from '@/lib/actions/visits'
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus'
 import { toast } from 'sonner'
@@ -59,6 +59,7 @@ export function SyncManager() {
       window.removeEventListener('offline', handleOffline)
       window.removeEventListener('offline-storage-updated', handleStorageUpdate)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const checkPending = async () => {
@@ -88,7 +89,8 @@ export function SyncManager() {
         const draftsOnSyncStart = await getOfflineNewVisits()
         for (const draft of draftsOnSyncStart) {
             try {
-                const { isDraft, id: tempId, ...payload } = draft
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { id: tempId, ...payload } = draft as any
                 const result = await createVisitAction({ ...payload, id: tempId })
                 
                 if (result.success) {
@@ -105,7 +107,8 @@ export function SyncManager() {
         // --- 2. Sync Offline Reports ---
         const remainingReports = await getOfflineReports()
         const currentDrafts = await getOfflineNewVisits()
-        const currentDraftIds = currentDrafts.map(d => d.id)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const currentDraftIds = currentDrafts.map((d: any) => d.id)
 
         for (const report of remainingReports) {
             try {

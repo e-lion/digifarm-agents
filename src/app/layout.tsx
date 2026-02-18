@@ -28,7 +28,7 @@ export default function RootLayout({
         <QueryProvider>
           {children}
           <PwaInstallPrompt />
-          <Toaster position="top-center" richColors />
+          <Toaster position="bottom-center" offset="80px" mobileOffset={{ bottom: '80px' }} richColors />
         </QueryProvider>
       </body>
     </html>

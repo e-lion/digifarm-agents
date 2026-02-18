@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { LayoutDashboard, Users, Map as MapIcon, LogOut, ShoppingBag } from 'lucide-react'
 import { AdminMobileNav } from './AdminMobileNav'

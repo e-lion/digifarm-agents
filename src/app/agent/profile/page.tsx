@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import AgentLayout from '@/components/layout/AgentLayout'
+
 import { Button } from '@/components/ui/Button'
 import { LogOut } from 'lucide-react'
 import { redirect } from 'next/navigation'
@@ -33,6 +33,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="space-y-6">
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <ProfileForm profile={profile as any} email={user.email!} />
 
       <form action={handleSignOut}>

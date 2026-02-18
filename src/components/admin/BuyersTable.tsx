@@ -6,7 +6,7 @@ import { BuyerWithStats, getBuyers } from '@/lib/actions/buyers'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
-import { Search, Download, ChevronLeft, ChevronRight, User, Building2, MapPin, Phone, Calendar } from 'lucide-react'
+import { Search, Download, ChevronLeft, ChevronRight, User, Building2, MapPin, Phone } from 'lucide-react'
 
 interface BuyersTableProps {
   buyers: BuyerWithStats[]
