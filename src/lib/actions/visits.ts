@@ -75,3 +75,21 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
   revalidatePath('/agent/routes')
   return { success: true }
 }
+
+export async function recordCheckInAction(visitId: string, coords: {lat: number, lng: number}) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('visits')
+    .update({
+      checked_in_at: new Date().toISOString(),
+      check_in_location: `POINT(${coords.lng} ${coords.lat})`
+    })
+    .eq('id', visitId)
+
+  if (error) return { error: error.message }
+  
+  revalidatePath('/admin/buyers')
+  revalidatePath('/agent/routes')
+  return { success: true }
+}

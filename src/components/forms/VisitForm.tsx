@@ -13,7 +13,7 @@ import { point, polygon } from '@turf/helpers'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
-import { updateVisitAction } from '@/lib/actions/visits'
+import { updateVisitAction, recordCheckInAction } from '@/lib/actions/visits'
 import dynamic from 'next/dynamic'
 
 const KENYAN_VALUE_CHAINS = [
@@ -295,6 +295,10 @@ export default function VisitForm({
         const poly = polygon(polyData)
         const isInside = booleanPointInPolygon(pt, poly)
         setIsWithinRange(isInside)
+        
+        if (isInside) {
+          recordCheckInAction(visitId, { lat: latitude, lng: longitude })
+        }
       } catch (e) {
         console.error("Geo check error", e)
         setIsWithinRange(true)

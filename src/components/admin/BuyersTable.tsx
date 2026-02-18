@@ -75,7 +75,7 @@ export default function BuyersTable({
             `"${b.latest_visit_agent_name || ''}"`,
             `"${b.latest_visit_status || ''}"`,
             b.latest_visit_scheduled_date ? new Date(b.latest_visit_scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-            b.last_visited ? new Date(b.last_visited).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
+            b.latest_visit_checked_in_at || b.last_visited ? new Date(b.latest_visit_checked_in_at || b.last_visited!).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
         ].join(','))
         ].join('\n')
 
@@ -134,7 +134,7 @@ export default function BuyersTable({
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Location</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider text-center">Engagement</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Agent Engagement</th>
-                <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Last Interaction</th>
+                <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Date Visited</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -228,9 +228,9 @@ export default function BuyersTable({
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                        {buyer.latest_visit_completed_at || buyer.last_visited ? (
+                        {buyer.latest_visit_checked_in_at || buyer.latest_visit_completed_at || buyer.last_visited ? (
                             <div className="text-xs text-gray-500">
-                                {new Date(buyer.latest_visit_completed_at || buyer.last_visited!).toLocaleString('en-GB', { 
+                                {new Date(buyer.latest_visit_checked_in_at || buyer.latest_visit_completed_at || buyer.last_visited!).toLocaleString('en-GB', { 
                                   day: '2-digit', 
                                   month: 'short', 
                                   hour: '2-digit', 

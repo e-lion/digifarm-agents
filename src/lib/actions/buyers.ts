@@ -18,6 +18,7 @@ export interface BuyerWithStats {
   latest_visit_agent_name: string | null
   latest_visit_scheduled_date: string | null
   latest_visit_completed_at: string | null
+  latest_visit_checked_in_at: string | null
 }
 
 export async function getBuyers(
@@ -57,7 +58,7 @@ export async function getBuyers(
     if (buyerNames.length > 0) {
         const { data: visitsData, error: visitsError } = await supabase
         .from('visits')
-        .select('buyer_name, agent_id, status, created_at, scheduled_date, completed_at, profiles(full_name, first_name, last_name, email)')
+        .select('buyer_name, agent_id, status, created_at, scheduled_date, completed_at, checked_in_at, profiles(full_name, first_name, last_name, email)')
         .in('buyer_name', buyerNames)
         .order('created_at', { ascending: false })
 
@@ -72,7 +73,8 @@ export async function getBuyers(
       latestStatus: string | null,
       latestAgent: string | null,
       latestScheduled: string | null,
-      latestCompleted: string | null
+      latestCompleted: string | null,
+      latestCheckedIn: string | null
     }>()
 
     visits.forEach(visit => {
@@ -106,11 +108,14 @@ export async function getBuyers(
         stats.latestScheduled = visit.scheduled_date
       }
       
-      // 2. Track the latest COMPLETED visit for the physical "Last visited" date
-      if (visit.status === 'completed' && visit.completed_at) {
-        if (!stats.lastVisit || new Date(visit.completed_at) > new Date(stats.lastVisit)) {
-            stats.lastVisit = visit.completed_at
+      // 2. Track the latest CHECKED-IN visit for the physical "Date Visited" date
+      // We prioritize checked_in_at, then completed_at if check-in was missed
+      const interactionTime = visit.checked_in_at || visit.completed_at
+      if (interactionTime) {
+        if (!stats.lastVisit || new Date(interactionTime) > new Date(stats.lastVisit)) {
+            stats.lastVisit = interactionTime
             stats.latestCompleted = visit.completed_at
+            stats.latestCheckedIn = visit.checked_in_at
         }
       }
       
@@ -136,7 +141,8 @@ export async function getBuyers(
         latest_visit_status: stats.latestStatus,
         latest_visit_agent_name: stats.latestAgent,
         latest_visit_scheduled_date: stats.latestScheduled,
-        latest_visit_completed_at: stats.latestCompleted
+        latest_visit_completed_at: stats.latestCompleted,
+        latest_visit_checked_in_at: stats.latestCheckedIn
       }
     })
 
