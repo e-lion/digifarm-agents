@@ -65,6 +65,7 @@ export default function VisitForm({
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isOfflineSaved, setIsOfflineSaved] = useState(false)
+  const [mapBounds, setMapBounds] = useState<[number, number][] | null>(null)
   const router = useRouter()
 
   // Helper to parse check_in_location from Supabase (can be WKT string or GeoJSON object)
@@ -291,6 +292,15 @@ export default function VisitForm({
       const { latitude, longitude } = position.coords
       setCoords({ lat: latitude, lng: longitude })
       
+      // Calculate bounds for map to show both agent and target
+      const points: [number, number][] = [[latitude, longitude]]
+      if (mapPolygons.length > 0) {
+        points.push(...mapPolygons[0].coords)
+      }
+      if (points.length > 1) {
+        setMapBounds(points)
+      }
+      
       
       if (!targetPolygon) {
         setIsWithinRange(true)
@@ -462,6 +472,7 @@ export default function VisitForm({
               zoom={coords || targetPolygon ? 16 : 13}
               polygons={mapPolygons}
               markers={mapMarkers}
+              bounds={mapBounds}
             />
             {!coords && (
               <div className="absolute inset-0 bg-black/5 flex items-center justify-center backdrop-blur-[1px]">
