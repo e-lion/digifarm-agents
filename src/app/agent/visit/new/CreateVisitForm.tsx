@@ -29,6 +29,12 @@ export default function CreateVisitForm() {
   ]
 
   const BUYER_TYPES = ['Aggregator', 'Processor', 'Exporter', 'Input Supplier', 'Cooperative']
+  
+  const COUNTIES = [
+    'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Uasin Gishu', 'Kiambu', 'Machakos', 'Nyeri', 'Meru', 'Kakamega' 
+  ]
+  
+  const [county, setCounty] = useState("")
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -45,6 +51,12 @@ export default function CreateVisitForm() {
 
     if (!buyerType) {
         alert('Please select a buyer type')
+        setLoading(false)
+        return
+    }
+
+    if (!county) {
+        alert('Please select a county')
         setLoading(false)
         return
     }
@@ -73,6 +85,7 @@ export default function CreateVisitForm() {
       buyer_name: buyerName,
       buyer_type: buyerType,
       value_chain: valueChain,
+      county: county,
       scheduled_date: date,
       polygon_coords: circularPolygon.geometry
     })
@@ -114,6 +127,19 @@ export default function CreateVisitForm() {
                placeholder="Search value chains..."
              />
              <input type="hidden" name="value_chain" value={valueChain} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">County</label>
+            <select 
+              value={county}
+              onChange={(e) => setCounty(e.target.value)}
+              required
+              className="flex h-12 w-full rounded-xl border-2 border-gray-100 bg-gray-50/50 px-3 py-2 text-base hover:border-green-200 hover:bg-white focus:border-green-600 focus:ring-4 focus:ring-green-600/10 transition-all duration-200 cursor-pointer"
+            >
+              <option value="">Select County</option>
+              {COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
           <div>

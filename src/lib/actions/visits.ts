@@ -7,6 +7,7 @@ export async function createVisitAction(data: {
   buyer_name: string
   buyer_type: string
   value_chain: string
+  county: string
   scheduled_date: string
   polygon_coords: any
 }) {
@@ -21,7 +22,8 @@ export async function createVisitAction(data: {
   const { error: buyerError } = await supabase.from('buyers').upsert({
     name: data.buyer_name,
     business_type: data.buyer_type,
-    value_chain: data.value_chain
+    value_chain: data.value_chain,
+    county: data.county
   }, { onConflict: 'name' })
 
   if (buyerError) return { error: buyerError.message }
@@ -46,14 +48,11 @@ export async function createVisitAction(data: {
 export async function updateVisitAction(visitId: string, buyerName: string, data: any, coords: {lat: number, lng: number} | null) {
   const supabase = await createClient()
 
-  // 1. Upsert buyer
+  // 1. Update buyer contact info
   const { error: buyerError } = await supabase.from('buyers').upsert({
     name: buyerName,
     contact_name: data.contact_name,
     phone: data.phone,
-    value_chain: data.value_chain,
-    business_type: data.agsi_business_type,
-    county: data.county,
     updated_at: new Date().toISOString()
   }, { onConflict: 'name' })
 

@@ -26,10 +26,7 @@ const KENYAN_VALUE_CHAINS = [
 const formSchema = z.object({
   contact_name: z.string().min(2, 'Name is required'),
   phone: z.string().regex(/^\+?[0-9]{10,14}$/, 'Invalid phone number'),
-  value_chain: z.string().min(2, 'Value chain is required'),
   active_farmers: z.number().min(0, 'Must be 0 or more'),
-  county: z.string().min(1, 'Select a county'),
-  agsi_business_type: z.string().min(1, 'Select business type'),
   is_potential_customer: z.enum(['Yes', 'No', 'Maybe'], {
     required_error: "Please select if they are a potential customer",
   }),
@@ -215,20 +212,8 @@ export default function VisitForm({
                    <p className="font-medium">{initialData.phone}</p>
                 </div>
                 <div>
-                   <label className="text-xs text-gray-500 uppercase">Value Chains</label>
-                   <p className="font-medium">{initialData.value_chain}</p>
-                </div>
-                <div>
                    <label className="text-xs text-gray-500 uppercase">Farmers</label>
                    <p className="font-medium">{initialData.active_farmers}</p>
-                </div>
-                 <div>
-                   <label className="text-xs text-gray-500 uppercase">County</label>
-                   <p className="font-medium">{initialData.county}</p>
-                </div>
-                 <div>
-                   <label className="text-xs text-gray-500 uppercase">Business Type</label>
-                   <p className="font-medium">{initialData.agsi_business_type}</p>
                 </div>
                 <div>
                    <label className="text-xs text-gray-500 uppercase">Potential Customer</label>
@@ -418,7 +403,12 @@ export default function VisitForm({
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
+              <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 mb-2">
+                <span className="text-sm font-medium text-gray-500">Buyer</span>
+                <span className="text-sm font-bold text-gray-900">{buyerName}</span>
+              </div>
+
+               <div>
                 <label className="text-sm font-medium text-gray-700">Contact Name</label>
                 <Input {...register('contact_name')} placeholder="e.g. John Doe" />
                 {errors.contact_name && <p className="text-xs text-red-500 mt-1">{errors.contact_name.message}</p>}
@@ -430,47 +420,10 @@ export default function VisitForm({
                 {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
               </div>
 
-              <div className="z-50 relative">
-                <label className="text-sm font-medium text-gray-700">Value Chains</label>
-                <SearchableSelect 
-                   options={KENYAN_VALUE_CHAINS}
-                   value={valueChain} 
-                   onChange={(val) => setValue('value_chain', val, { shouldValidate: true })}
-                   placeholder="Search value chains..."
-                />
-                {/* Hidden input to register with react-hook-form if needed, but setValue handles it */}
-                <input type="hidden" {...register('value_chain')} />
-                {errors.value_chain && <p className="text-xs text-red-500 mt-1">{errors.value_chain.message}</p>}
-              </div>
-
               <div>
                 <label className="text-sm font-medium text-gray-700">Active Farmers</label>
                 <Input {...register('active_farmers', { valueAsNumber: true })} type="number" />
                 {errors.active_farmers && <p className="text-xs text-red-500 mt-1">{errors.active_farmers.message}</p>}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">County</label>
-                <select 
-                  {...register('county')}
-                  className="flex h-12 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
-                >
-                  <option value="">Select County</option>
-                  {COUNTIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                {errors.county && <p className="text-xs text-red-500 mt-1">{errors.county.message}</p>}
-              </div>
-
-               <div>
-                <label className="text-sm font-medium text-gray-700">Agri-business Type</label>
-                <select 
-                  {...register('agsi_business_type')}
-                  className="flex h-12 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
-                >
-                  <option value="">Select Type</option>
-                  {BUSINESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                {errors.agsi_business_type && <p className="text-xs text-red-500 mt-1">{errors.agsi_business_type.message}</p>}
               </div>
 
               <div>
