@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PhoneInput, isValidPhoneNumber } from '@/components/ui/PhoneInput'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Loader2, MapPin, CheckCircle, XCircle } from 'lucide-react'
+import { Loader2, MapPin, CheckCircle, XCircle, WifiOff } from 'lucide-react'
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 import { point, polygon } from '@turf/helpers'
 import circle from '@turf/circle'
@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { updateVisitAction, recordCheckInAction } from '@/lib/actions/visits'
 import dynamic from 'next/dynamic'
+import { toast } from 'sonner'
 
 
 const formSchema = z.object({
@@ -284,11 +285,17 @@ export default function VisitForm({
         try {
             const center = point([longitude, latitude])
             const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
-            recordCheckInAction(visitId, { lat: latitude, lng: longitude }, circularPolygon.geometry)
+            
+            if (navigator.onLine) {
+                recordCheckInAction(visitId, { lat: latitude, lng: longitude }, circularPolygon.geometry)
+            } else {
+                toast.info("Working offline. Location verified locally.")
+            }
         } catch (e) {
             console.error("Error generating on-site polygon:", e)
-            // Fallback to just recording check-in without polygon
-            recordCheckInAction(visitId, { lat: latitude, lng: longitude })
+            if (navigator.onLine) {
+                recordCheckInAction(visitId, { lat: latitude, lng: longitude })
+            }
         }
         return
       }
@@ -301,7 +308,11 @@ export default function VisitForm({
         setIsWithinRange(isInside)
         
         if (isInside) {
-          recordCheckInAction(visitId, { lat: latitude, lng: longitude })
+          if (navigator.onLine) {
+            recordCheckInAction(visitId, { lat: latitude, lng: longitude })
+          } else {
+             toast.info("Working offline. Location verified locally.")
+          }
         }
       } catch (e) {
         console.error("Geo check error", e)
@@ -334,7 +345,13 @@ export default function VisitForm({
     try {
         const center = point([coords.lng, coords.lat])
         const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
-        const result = await recordCheckInAction(visitId, coords, circularPolygon.geometry)
+        
+        let result = { success: true, error: null as any }
+        if (navigator.onLine) {
+            result = await recordCheckInAction(visitId, coords, circularPolygon.geometry) as any
+        } else {
+            toast.info("Relocated locally while offline.")
+        }
         
         if (result?.error) {
             setError(result.error)
@@ -364,11 +381,11 @@ export default function VisitForm({
             // Dispatch event to update pending count in UI
             window.dispatchEvent(new Event('offline-storage-updated'))
             
-            // Manually set status to 'completed' equivalent for UI feedback
-            // We can reuse the existing success UI or validly redirect
-            // Ideally we show the success card but with "Saved Offline" message
-            // or just toast and redirect. 
-            // For now, let's redirect to routes which will show the pending status
+            toast.success("Report saved to outbox. It will sync automatically when you are back online.", {
+                duration: 5000,
+                icon: <WifiOff className="h-5 w-5 text-orange-500" />
+            })
+            
             router.push('/agent/routes')
             return
         } catch (e) {

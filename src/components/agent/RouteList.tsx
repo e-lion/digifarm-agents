@@ -4,16 +4,20 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/Card'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { MapPin, Calendar, CheckCircle, ArrowRight, Loader2, Filter, X } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/Input'
+import { getOfflineReports, OfflineVisitReport } from '@/lib/offline-storage'
+import { WifiOff } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
 export function RouteList({ userId }: { userId: string }) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'planned' | 'completed'>('all')
   const [dateFilter, setDateFilter] = useState('')
+  const [offlineIds, setOfflineIds] = useState<string[]>([])
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
   const supabase = createClient()
@@ -55,6 +59,21 @@ export function RouteList({ userId }: { userId: string }) {
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined
     },
   })
+
+  const loadOfflineData = async () => {
+    try {
+      const reports = await getOfflineReports()
+      setOfflineIds(reports.map(r => r.id))
+    } catch (e) {
+      console.error("Failed to load offline status:", e)
+    }
+  }
+
+  useEffect(() => {
+    loadOfflineData()
+    window.addEventListener('offline-storage-updated', loadOfflineData)
+    return () => window.removeEventListener('offline-storage-updated', loadOfflineData)
+  }, [])
 
   // Intersection Observer for Infinite Scroll
   useEffect(() => {
@@ -157,9 +176,14 @@ export function RouteList({ userId }: { userId: string }) {
           </div>
         ) : (
           <>
-            {visits.map((visit: any) => (
+            {visits.map((visit: any) => {
+              const isOfflinePending = offlineIds.includes(visit.id)
+              return (
               <Link key={visit.id} href={`/agent/visit/${visit.id}`} className="block">
-                <Card className="overflow-hidden border-l-4 border-l-green-600 shadow-sm active:scale-[0.98] transition-all hover:shadow-md hover:border-l-green-700 cursor-pointer">
+                <Card className={cn(
+                    "overflow-hidden border-l-4 shadow-sm active:scale-[0.98] transition-all hover:shadow-md cursor-pointer",
+                    isOfflinePending ? "border-l-orange-500" : "border-l-green-600"
+                )}>
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="space-y-2">
                       <h3 className="font-bold text-gray-900 text-lg leading-tight">{visit.buyer_name}</h3>
@@ -168,11 +192,17 @@ export function RouteList({ userId }: { userId: string }) {
                           <Calendar className="h-3.5 w-3.5 text-green-600" />
                           {new Date(visit.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
-                          visit.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {visit.status}
-                        </span>
+                        {offlineIds.includes(visit.id) ? (
+                           <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-orange-100 text-orange-700 flex items-center gap-1">
+                             <WifiOff className="h-3 w-3" /> Pending Sync
+                           </span>
+                        ) : (
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
+                            visit.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {visit.status}
+                          </span>
+                        )}
                       </div>
                     </div>
                     
@@ -182,7 +212,8 @@ export function RouteList({ userId }: { userId: string }) {
                   </CardContent>
                 </Card>
               </Link>
-            ))}
+            )
+          })}
 
             {/* Loading Indicator for scroll */}
             <div ref={loadMoreRef} className="py-8 flex justify-center">
