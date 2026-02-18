@@ -21,15 +21,13 @@ export default function VisitPage({ params }: { params: Promise<{ id: string }> 
       try {
         setLoading(true)
         
-        // 1. If it's a local draft, get it from new visits store
-        if (isDraft) {
-            const drafts = await getOfflineNewVisits()
-            const draft = drafts.find(d => d.id === id)
-            if (draft) {
-                setVisit(draft)
-                setLoading(false)
-                return
-            }
+        // 1. Check Offline Drafts (Priority if isDraft is true, or fallback)
+        const drafts = await getOfflineNewVisits()
+        const draft = drafts.find(d => d.id === id)
+        if (draft) {
+            setVisit(draft)
+            setLoading(false)
+            return
         }
 
         // 2. Try online fetch
