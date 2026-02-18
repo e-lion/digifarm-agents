@@ -207,7 +207,7 @@ export function RouteList({ userId }: { userId: string }) {
               return (
               <Link 
                 key={visit.id} 
-                href={isDraft ? `/agent/visit/draft?id=${visit.id}&isDraft=true` : `/agent/visit/${visit.id}`} 
+                href={isDraft ? `/agent/visit/details?id=${visit.id}&isDraft=true` : `/agent/visit/details?id=${visit.id}`} 
                 className="block"
               >
                 <Card className={cn(

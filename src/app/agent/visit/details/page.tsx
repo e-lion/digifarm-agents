@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
-function DraftWrapper() {
+const VisitDetailsWrapper = () => {
   const searchParams = useSearchParams()
   const id = searchParams.get('id')
   
@@ -14,21 +14,21 @@ function DraftWrapper() {
   const mockedParams = Promise.resolve({ id: id as string })
 
   if (!id) {
-    return <div className="p-8 text-center text-red-500">No draft ID provided</div>
+    return <div className="p-8 text-center text-red-500">No visit ID provided</div>
   }
 
   return <VisitPage params={mockedParams} />
 }
 
-export default function OfflineDraftPage() {
+export default function VisitDetailsPage() {
   return (
     <Suspense fallback={
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
              <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-             <p className="text-sm">Preparing offline draft...</p>
+             <p className="text-sm">Loading visit details...</p>
         </div>
     }>
-      <DraftWrapper />
+      <VisitDetailsWrapper />
     </Suspense>
   )
 }
