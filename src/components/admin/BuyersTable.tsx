@@ -60,6 +60,7 @@ export default function BuyersTable({
         const { buyers: allBuyers } = await getBuyers(1, 10000, currentSearch)
         
         // CSV Export
+        const headers = ['Name', 'Created At', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Names', 'Latest Agent', 'Latest Status', 'Date Visited']
         const csvContent = [
         headers.join(','),
         ...allBuyers.map(b => [
@@ -70,11 +71,9 @@ export default function BuyersTable({
             `"${b.value_chain || ''}"`,
             `"${b.business_type || ''}"`,
             `"${b.county || ''}"`,
-            b.agent_count,
             `"${b.agent_names.join(', ')}"`,
             `"${b.latest_visit_agent_name || ''}"`,
             `"${b.latest_visit_status || ''}"`,
-            b.latest_visit_scheduled_date ? new Date(b.latest_visit_scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
             b.latest_visit_checked_in_at || b.last_visited ? new Date(b.latest_visit_checked_in_at || b.last_visited!).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
         ].join(','))
         ].join('\n')
@@ -132,7 +131,6 @@ export default function BuyersTable({
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Contact Info</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Value Chain</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Location</th>
-                <th className="px-6 py-4 uppercase text-xs tracking-wider text-center">Engagement</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Agent Engagement</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Date Visited</th>
               </tr>
@@ -192,12 +190,6 @@ export default function BuyersTable({
                             {buyer.county || '-'}
                         </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="text-lg font-bold text-gray-900">{buyer.agent_count}</div>
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wide">Agents</div>
-                      </div>
-                    </td>
                     <td className="px-6 py-4">
                       {buyer.latest_visit_agent_name ? (
                         <div className="space-y-1">
@@ -209,18 +201,7 @@ export default function BuyersTable({
                             <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-tighter ${
                               buyer.latest_visit_status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                             }`}>
-                              {buyer.latest_visit_status}
                             </span>
-                            {buyer.latest_visit_scheduled_date && (
-                              <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {new Date(buyer.latest_visit_scheduled_date).toLocaleDateString('en-GB', { 
-                                  day: '2-digit', 
-                                  month: 'short',
-                                  year: 'numeric'
-                                })}
-                              </span>
-                            )}
                           </div>
                         </div>
                       ) : (
