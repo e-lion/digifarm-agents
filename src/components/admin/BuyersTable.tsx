@@ -201,6 +201,7 @@ export default function BuyersTable({
                             <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-tighter ${
                               buyer.latest_visit_status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                             }`}>
+                              {buyer.latest_visit_status}
                             </span>
                           </div>
                         </div>
