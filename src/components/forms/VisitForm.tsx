@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { PhoneInput, isValidPhoneNumber } from '@/components/ui/PhoneInput'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Loader2, MapPin, CheckCircle, XCircle } from 'lucide-react'
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
@@ -17,19 +18,13 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { updateVisitAction, recordCheckInAction } from '@/lib/actions/visits'
 import dynamic from 'next/dynamic'
 
-const KENYAN_VALUE_CHAINS = [
-    "Maize", "Tea", "Coffee", "Dairy", "Sugarcane", "Potatoes", "Beans", 
-    "Bananas", "Rice", "Wheat", "Sorghum", "Millet", "Avocado", "Mangoes", 
-    "Macadamia", "Cashew Nuts", "Pyrethrum", "Cotton", "Sunflower", "Soya Beans",
-    "Tomatoes", "Onions", "Cabbages", "Kales (Sukuma Wiki)", "Poultry", "Goats/Sheep"
-]
 
 const formSchema = z.object({
   contact_name: z.string().min(2, 'Name is required'),
-  phone: z.string().regex(/^\+?[0-9]{10,14}$/, 'Invalid phone number'),
+  phone: z.string().refine(isValidPhoneNumber, { message: 'Invalid phone number' }),
   active_farmers: z.number().min(0, 'Must be 0 or more'),
-  is_potential_customer: z.enum(['Yes', 'No', 'Maybe'], {
-    required_error: "Please select if they are a potential customer",
+  is_potential_customer: z.union([z.literal('Yes'), z.literal('No'), z.literal('Maybe')], {
+    message: "Please select if they are a potential customer"
   }),
   trade_volume: z.string().min(1, 'Volume is required'),
   buyer_feedback: z.string().optional(),
@@ -37,11 +32,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
-const COUNTIES = [
-  'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Uasin Gishu', 'Kiambu', 'Machakos', 'Nyeri', 'Meru', 'Kakamega' 
-]
 
-const BUSINESS_TYPES = ['Aggregator', 'Processor', 'Exporter', 'Input Supplier', 'Cooperative']
 
 const DynamicMap = dynamic(() => import('@/components/map/Map'), { 
   loading: () => <div className="h-48 w-full bg-gray-100 animate-pulse rounded-lg flex items-center justify-center text-xs text-gray-400">Loading map...</div>,
@@ -259,15 +250,15 @@ export default function VisitForm({
     popup: 'Your Location'
   }] : []
 
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       ...initialData,
+      phone: initialData?.phone || '', // Ensure default value to avoid uncontrolled error
       agsi_business_type: initialData?.agsi_business_type || buyerType || ""
     }
   })
   
-  const valueChain = watch('value_chain')
 
   // ... checkLocation remains same ...
   const checkLocation = () => {
@@ -433,8 +424,18 @@ export default function VisitForm({
 
               <div>
                 <label className="text-sm font-medium text-gray-700">Phone</label>
-                <Input {...register('phone')} placeholder="+254..." type="tel" />
-                {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
+                <Controller
+                  name="phone"
+                  control={control}
+                  render={({ field }) => (
+                    <PhoneInput 
+                      value={field.value} 
+                      onChange={field.onChange}
+                      placeholder="Enter phone number"
+                      error={errors.phone?.message}
+                    />
+                  )}
+                />
               </div>
 
               <div>
