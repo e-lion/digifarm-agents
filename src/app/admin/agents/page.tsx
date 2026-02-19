@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import AdminLayout from '@/components/layout/AdminLayout'
-import { revalidatePath } from 'next/cache'
 import { AgentsView } from './AgentsView'
 
 export default async function AgentsPage({
@@ -19,37 +18,23 @@ export default async function AgentsPage({
   // Get current user to exclude self
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: allProfiles } = await supabase
+  const { data: allProfilesData } = await supabase
     .from('profiles')
     .select('*, visits(*)')
     .neq('id', user?.id) // Exclude current user
     .order('full_name', { ascending: true })
 
-  // Filter out admins (allows 'agent' AND null roles)
-  const agentProfiles = allProfiles?.filter(p => p.role !== 'admin') || []
+  const allProfiles = allProfilesData || []
+  // Filter for performance view (allows 'agent' AND null roles)
+  const agentProfiles = allProfiles.filter(p => p.role !== 'admin')
 
-  // Fetch whitelisted emails
-  const { data: agents } = await supabase
+  // Fetch whitelisted emails (source of truth for access)
+  const { data: accessList } = await supabase
     .from('profile_access')
     .select('*')
-    .eq('role', 'agent')
     .order('created_at', { ascending: false })
 
-  async function addAgent(formData: FormData) {
-    'use server'
-    const email = formData.get('email') as string
-    if (!email) return
-
-    const supabase = await createClient()
-    const { error } = await supabase.from('profile_access').insert({ email, role: 'agent' })
-    
-    if (error) {
-        console.error('Failed to add agent:', error)
-        // In a real app, return extraction to show toast
-    } else {
-        revalidatePath('/admin/agents')
-    }
-  }
+  const accessEntries = accessList || []
 
   // Calculate metrics for the selected date range
   const agentsWithMetrics = agentProfiles.map(agent => {
@@ -85,6 +70,18 @@ export default async function AgentsPage({
     }
   })
 
+  // Create unified users list for Access Control
+  const unifiedUsers = accessEntries.map(access => {
+    const profile = allProfiles.find(p => p.email === access.email)
+    return {
+      email: access.email,
+      role: access.role,
+      status: access.status || 'activated',
+      fullName: profile?.full_name || null,
+      isRegistered: !!profile,
+    }
+  })
+
   return (
     <AdminLayout>
       <div className="mb-8 flex items-center justify-between">
@@ -96,8 +93,7 @@ export default async function AgentsPage({
 
       <AgentsView 
         agentsWithMetrics={agentsWithMetrics} 
-        whitelistedAgents={agents || []} 
-        addAgentAction={addAgent}
+        unifiedUsers={unifiedUsers}
         startDate={startDate}
         endDate={endDate}
       />

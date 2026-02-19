@@ -34,6 +34,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      buyer_contacts: {
+        Row: {
+          buyer_id: string | null
+          created_at: string | null
+          designation: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          buyer_id?: string | null
+          created_at?: string | null
+          designation?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          buyer_id?: string | null
+          created_at?: string | null
+          designation?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_contacts_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "buyers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_designations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       buyers: {
         Row: {
           business_type: string | null
@@ -45,6 +101,7 @@ export type Database = {
           phone: string | null
           updated_at: string | null
           value_chain: string | null
+          value_chains: string[] | null
         }
         Insert: {
           business_type?: string | null
@@ -56,6 +113,7 @@ export type Database = {
           phone?: string | null
           updated_at?: string | null
           value_chain?: string | null
+          value_chains?: string[] | null
         }
         Update: {
           business_type?: string | null
@@ -67,6 +125,7 @@ export type Database = {
           phone?: string | null
           updated_at?: string | null
           value_chain?: string | null
+          value_chains?: string[] | null
         }
         Relationships: []
       }
@@ -101,6 +160,7 @@ export type Database = {
           last_name: string | null
           phone_number: string | null
           role: string
+          counties: string[] | null
         }
         Insert: {
           created_at?: string | null
@@ -111,6 +171,7 @@ export type Database = {
           last_name?: string | null
           phone_number?: string | null
           role: string
+          counties?: string[] | null
         }
         Update: {
           created_at?: string | null
@@ -121,6 +182,7 @@ export type Database = {
           last_name?: string | null
           phone_number?: string | null
           role?: string
+          counties?: string[] | null
         }
         Relationships: []
       }
@@ -129,6 +191,7 @@ export type Database = {
           agent_id: string
           buyer_name: string
           buyer_type: string | null
+          activity_type: string | null
           check_in_location: unknown | null
           checked_in_at: string | null
           completed_at: string | null
@@ -143,6 +206,7 @@ export type Database = {
           agent_id: string
           buyer_name: string
           buyer_type?: string | null
+          activity_type?: string | null
           check_in_location?: unknown | null
           checked_in_at?: string | null
           completed_at?: string | null
@@ -152,11 +216,13 @@ export type Database = {
           scheduled_date: string
           status?: string
           visit_details?: Json | null
+          visit_category?: string | null
         }
         Update: {
           agent_id?: string
           buyer_name?: string
           buyer_type?: string | null
+          activity_type?: string | null
           check_in_location?: unknown | null
           checked_in_at?: string | null
           completed_at?: string | null
@@ -166,6 +232,7 @@ export type Database = {
           scheduled_date?: string
           status?: string
           visit_details?: Json | null
+          visit_category?: string | null
         }
         Relationships: [
           {
@@ -175,6 +242,44 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      route_audits: {
+        Row: {
+          id: string
+          agent_id: string
+          action: string
+          reason: string
+          route_date: string
+          details: Json
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          action: string
+          reason: string
+          route_date: string
+          details?: Json
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          action?: string
+          reason?: string
+          route_date?: string
+          details?: Json
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_audits_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
         ]
       }
     }

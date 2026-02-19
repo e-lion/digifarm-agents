@@ -10,7 +10,8 @@ import { MapPin, Calendar, CheckCircle, ArrowRight, Loader2, Filter, X } from 'l
 import Link from 'next/link'
 import { Input } from '@/components/ui/Input'
 import { getOfflineReports, getOfflineNewVisits, cachePlannedVisits } from '@/lib/offline-storage'
-import { WifiOff, FileText } from 'lucide-react'
+import { WifiOff, FileText, Plus, RefreshCw } from 'lucide-react'
+import { RouteEditDialog } from './routes/RouteEditDialog'
 
 const PAGE_SIZE = 10
 
@@ -22,6 +23,13 @@ export function RouteList({ userId }: { userId: string }) {
   const [offlineDrafts, setOfflineDrafts] = useState<any[]>([])
   const loadMoreRef = useRef<HTMLDivElement>(null)
   
+  // Dialog state
+  const [editMode, setEditMode] = useState<'add' | 'swap'>('add')
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [selectedDateProps, setSelectedDateProps] = useState<string>('')
+  const [selectedVisitId, setSelectedVisitId] = useState<string>('')
+  const [selectedBuyerName, setSelectedBuyerName] = useState<string>('')
+
   const supabase = createClient()
 
   const fetchVisits = async ({ pageParam = 0 }) => {
@@ -121,6 +129,32 @@ export function RouteList({ userId }: { userId: string }) {
 
   const visits = [...filteredDrafts, ...remoteVisits]
 
+  const groupedVisits = visits.reduce((acc, visit) => {
+    // Treat date portion strictly
+    const date = visit.scheduled_date ? visit.scheduled_date.split('T')[0] : 'Unknown Date'
+    if (!acc[date]) acc[date] = []
+    acc[date].push(visit)
+    return acc
+  }, {} as Record<string, any[]>)
+
+  const sortedDates = Object.keys(groupedVisits).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+
+  const handleAddStop = (date: string) => {
+    setEditMode('add')
+    setSelectedDateProps(date)
+    setEditDialogOpen(true)
+  }
+
+  const handleSwapStop = (e: React.MouseEvent, visit: any) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditMode('swap')
+    setSelectedVisitId(visit.id)
+    setSelectedDateProps(visit.scheduled_date)
+    setSelectedBuyerName(visit.buyer_name)
+    setEditDialogOpen(true)
+  }
+
   return (
     <div className="space-y-6">
       {/* Filters Section */}
@@ -203,58 +237,100 @@ export function RouteList({ userId }: { userId: string }) {
             </Button>
           </div>
         ) : (
-          <>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {visits.map((visit: any) => {
-              const isOfflinePending = offlineIds.includes(visit.id)
-              const isDraft = visit.isDraft
+          <div className="space-y-8">
+            {sortedDates.map((date) => {
+              const dayVisits = groupedVisits[date]
+              const dateObj = new Date(date)
+              // To prevent invalid date text
+              const displayDate = isNaN(dateObj.getTime()) ? date : dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
               return (
-              <Link 
-                key={visit.id} 
-                href={isDraft ? `/agent/visit/details?id=${visit.id}&isDraft=true` : `/agent/visit/details?id=${visit.id}`} 
-                className="block"
-              >
-                <Card className={cn(
-                    "overflow-hidden border-l-4 shadow-sm active:scale-[0.98] transition-all hover:shadow-md cursor-pointer",
-                    isDraft ? "border-l-blue-400 bg-blue-50/10" :
-                    isOfflinePending ? "border-l-orange-500" : "border-l-green-600"
-                )}>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-gray-900 text-lg leading-tight">{visit.buyer_name}</h3>
-                      <div className="flex flex-wrap items-center text-sm text-gray-500 gap-x-4 gap-y-1">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5 text-green-600" />
-                          {new Date(visit.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
-                        {offlineIds.includes(visit.id) ? (
-                           <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-orange-100 text-orange-700 flex items-center gap-1">
-                             <WifiOff className="h-3 w-3" /> Pending Sync
-                           </span>
-                        ) : (
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
-                            isDraft ? 'bg-blue-100 text-blue-700' :
-                            visit.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {isDraft ? 'Offline Draft' : visit.status}
-                          </span>
-                        )}
-                        {isDraft && (
-                           <span className="flex items-center gap-1 text-[10px] text-blue-600 font-bold italic">
-                             <FileText className="h-3 w-3" /> Will sync when online
-                           </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <Button size="sm" variant="outline" className="h-10 w-10 p-0 rounded-full border-gray-200 group-hover:border-green-200 group-hover:bg-green-50">
-                      <ArrowRight className="h-5 w-5 text-green-600" />
+                <div key={date} className="space-y-4">
+                  <div className="flex items-center justify-between sticky top-[138px] z-20 bg-gray-50/95 backdrop-blur-sm -mx-4 px-4 py-2">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-green-600" />
+                      {displayDate}
+                    </h2>
+                    {/* Add Stop Button only if filtering isn't completely overriding the context of a day */}
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddStop(date)}
+                      className="text-green-700 bg-green-50 border-green-200 hover:bg-green-100 hover:text-green-800"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Stop
                     </Button>
-                  </CardContent>
-                </Card>
-              </Link>
-            )
-          })}
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {dayVisits.map((visit: any) => {
+                      const isOfflinePending = offlineIds.includes(visit.id)
+                      const isDraft = visit.isDraft
+                      return (
+                      <Link 
+                        key={visit.id} 
+                        href={isDraft ? `/agent/visit/details?id=${visit.id}&isDraft=true` : `/agent/visit/details?id=${visit.id}`} 
+                        className="block"
+                      >
+                        <Card className={cn(
+                            "group overflow-hidden border-l-4 shadow-sm active:scale-[0.98] transition-all hover:shadow-md cursor-pointer relative",
+                            isDraft ? "border-l-blue-400 bg-blue-50/10" :
+                            isOfflinePending ? "border-l-orange-500" : "border-l-green-600"
+                        )}>
+                          <CardContent className="p-4 flex items-center justify-between">
+                            <div className="space-y-2">
+                              <h3 className="font-bold text-gray-900 text-lg leading-tight flex items-center gap-2">
+                                {visit.buyer_name}
+                                {!isDraft && visit.status !== 'completed' && (
+                                   <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      className="h-6 px-2 text-[10px] bg-gray-100 hover:bg-orange-100 border-none bg-transparent hover:text-orange-700 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={(e) => handleSwapStop(e, visit)}
+                                   >
+                                     <RefreshCw className="h-3 w-3 mr-1" /> Swap
+                                   </Button>
+                                )}
+                              </h3>
+                              <div className="flex flex-wrap items-center text-sm text-gray-500 gap-x-4 gap-y-1">
+                                {offlineIds.includes(visit.id) ? (
+                                   <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-orange-100 text-orange-700 flex items-center gap-1">
+                                     <WifiOff className="h-3 w-3" /> Pending Sync
+                                   </span>
+                                ) : (
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
+                                    isDraft ? 'bg-blue-100 text-blue-700' :
+                                    visit.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {isDraft ? 'Offline Draft' : visit.status}
+                                  </span>
+                                )}
+                                {visit.activity_type && (
+                                   <span className="text-xs font-medium text-gray-400">
+                                      {visit.activity_type}
+                                   </span>
+                                )}
+                                {isDraft && (
+                                   <span className="flex items-center gap-1 text-[10px] text-blue-600 font-bold italic">
+                                     <FileText className="h-3 w-3" /> Will sync when online
+                                   </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <Button size="sm" variant="outline" className="h-10 w-10 p-0 rounded-full border-gray-200 group-hover:border-green-200 group-hover:bg-green-50 z-10">
+                              <ArrowRight className="h-5 w-5 text-green-600" />
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )
+                  })}
+                  </div>
+                </div>
+              )
+            })}
 
             {/* Loading Indicator for scroll */}
             <div ref={loadMoreRef} className="py-8 flex justify-center">
@@ -269,9 +345,18 @@ export function RouteList({ userId }: { userId: string }) {
                 <p className="text-xs text-gray-400 font-medium italic">End of routes</p>
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
+
+      <RouteEditDialog 
+         open={editDialogOpen}
+         onOpenChange={setEditDialogOpen}
+         mode={editMode}
+         scheduledDate={selectedDateProps}
+         visitId={selectedVisitId}
+         currentBuyerName={selectedBuyerName}
+      />
     </div>
   )
 }

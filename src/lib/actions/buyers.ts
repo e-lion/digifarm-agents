@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 
 export interface BuyerWithStats {
   id: string
@@ -157,25 +158,34 @@ export async function getBuyers(
   }
 }
 
+// ... (interfaces)
+
 export interface BuyerOption {
   id: string
   name: string
   contact_name: string | null
+  phone: string | null
+  contact_designation: string | null
   business_type: string | null
   value_chain: string | null
+  value_chains: string[] | null
   county: string | null
   location: { lat: number, lng: number } | null
 }
 
-export async function getBuyersList(search?: string, limit: number = 10): Promise<{ data: BuyerOption[], count: number }> {
+export async function getBuyersList(
+  search?: string, 
+  limit: number = 50, 
+  offset: number = 0
+): Promise<{ data: BuyerOption[], count: number }> {
   const supabase = await createClient()
   
-  // 1. Fetch buyers
+  // 1. Fetch buyers with location columns
   let query = supabase
     .from('buyers')
-    .select('id, name, contact_name, business_type, value_chain, county', { count: 'exact' })
-    .order('name')
-    .limit(limit)
+    .select('id, name, contact_name, phone, business_type, value_chain, value_chains, county, location_lat, location_lng', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
 
   if (search) {
     query = query.ilike('name', `%${search}%`)
@@ -188,41 +198,56 @@ export async function getBuyersList(search?: string, limit: number = 10): Promis
     return { data: [], count: 0 }
   }
 
-  // 2. Fetch latest visit location for these buyers
-  const buyerNames = buyers.map(b => b.name)
-  const buyerLocations = new Map<string, { lat: number, lng: number }>()
+  // 2. Fetch latest designation from buyer_contacts
+  const buyerIds = buyers.map(b => b.id)
+  const contactDesignations = new Map<string, string>()
+
+  if (buyerIds.length > 0) {
+      const { data: contacts } = await supabase
+          .from('buyer_contacts')
+          .select('buyer_id, designation')
+          .in('buyer_id', buyerIds)
+          .order('created_at', { ascending: false })
+
+      if (contacts) {
+          contacts.forEach(c => {
+              if (c.buyer_id && !contactDesignations.has(c.buyer_id)) {
+                  contactDesignations.set(c.buyer_id, c.designation || '')
+              }
+          })
+      }
+  }
+
+  // 3. Fetch latest visit location for buyers MISSING location
+  const buyersWithoutLocation = buyers.filter(b => !b.location_lat || !b.location_lng)
+  const buyerNamesToCheck = buyersWithoutLocation.map(b => b.name)
+  const derivedLocations = new Map<string, { lat: number, lng: number }>()
   
-  if (buyerNames.length > 0) {
-     // We use a simplified query to just get one visit per buyer with coords
-     // Since Supabase doesn't support easy "distinct on" via JS client without RPC sometimes,
-     // we'll fetch visits with coords for these buyers and process in JS.
-     // To optimize, we just look for visits that HAVE polygon_coords.
+  if (buyerNamesToCheck.length > 0) {
      const { data: visits } = await supabase
         .from('visits')
         .select('buyer_name, polygon_coords')
-        .in('buyer_name', buyerNames)
+        .in('buyer_name', buyerNamesToCheck)
         .not('polygon_coords', 'is', null)
         .order('created_at', { ascending: false })
      
      if (visits) {
         visits.forEach(visit => {
-            if (!buyerLocations.has(visit.buyer_name) && visit.polygon_coords) {
-                // Extract center. polygon_coords is a GeoJSON-like object or specific structure.
-                // Based on CreateVisitForm, it is created via turf.circle which outputs a Polygon.
-                // Structure: { type: "Polygon", coordinates: [[[lng, lat], ...]] }
+            if (!derivedLocations.has(visit.buyer_name) && visit.polygon_coords) {
                 try {
-                    const coords = visit.polygon_coords.coordinates[0]; // First ring
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const coords = (visit.polygon_coords as any).coordinates[0]; 
                     if (coords && coords.length > 0) {
-                        // Simple average for centroid
                         let latSum = 0, lngSum = 0;
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         coords.forEach((c: any) => {
                             lngSum += c[0];
                             latSum += c[1];
                         });
-                        const centerLat = latSum / coords.length;
-                        const centerLng = lngSum / coords.length;
-                        buyerLocations.set(visit.buyer_name, { lat: centerLat, lng: centerLng });
+                        derivedLocations.set(visit.buyer_name, { 
+                            lat: latSum / coords.length, 
+                            lng: lngSum / coords.length 
+                        });
                     }
                 } catch (e) {
                     console.warn(`Failed to parse location for ${visit.buyer_name}`, e);
@@ -232,11 +257,201 @@ export async function getBuyersList(search?: string, limit: number = 10): Promis
      }
   }
   
-  const mappedBuyers = buyers.map(buyer => ({
-    ...buyer,
-    location: buyerLocations.get(buyer.name) || null
-  })) as BuyerOption[]
+  const mappedBuyers = buyers.map(buyer => {
+      let location = null
+      if (buyer.location_lat && buyer.location_lng) {
+          location = { lat: buyer.location_lat, lng: buyer.location_lng }
+      } else {
+          location = derivedLocations.get(buyer.name) || null
+      }
+
+      return {
+        id: buyer.id,
+        name: buyer.name,
+        contact_name: buyer.contact_name,
+        phone: buyer.phone,
+        contact_designation: contactDesignations.get(buyer.id) || null,
+        business_type: buyer.business_type,
+        value_chain: buyer.value_chain,
+        value_chains: buyer.value_chains,
+        county: buyer.county,
+        location
+      }
+  })
 
   return { data: mappedBuyers, count: count || 0 }
+}
+
+// ... (existing helper functions)
+
+export async function getBuyerTypes(): Promise<string[]> {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('buyer_types')
+    .select('name')
+    .order('name')
+    
+  if (error) {
+    console.error('Error fetching buyer types:', error)
+    return []
+  }
+  
+  return data.map(t => t.name)
+}
+
+export async function getValueChains(): Promise<string[]> {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('value_chains')
+    .select('name')
+    .order('name')
+    
+  if (error) {
+    console.error('Error fetching value chains:', error)
+    return []
+  }
+  
+  return data.map(t => t.name)
+}
+
+export async function getContactDesignations() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('contact_designations')
+    .select('name')
+    .order('name')
+
+  if (error) {
+    console.error('Error fetching contact designations:', error)
+    return []
+  }
+
+  return data.map(d => d.name)
+}
+
+export async function getBuyerContacts(buyerId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('buyer_contacts')
+    .select('*')
+    .eq('buyer_id', buyerId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching buyer contacts:', error)
+    return []
+  }
+
+  return data
+}
+
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function createBuyer(data: any) {
+  const supabase = await createClient()
+  
+  try {
+      // 1. Create the buyer
+      // We save to both value_chain (single text, legacy/primary) and value_chains (array)
+      const primaryValueChain = data.value_chain && data.value_chain.length > 0 ? data.value_chain[0] : null;
+
+      const { data: newBuyer, error } = await supabase
+          .from('buyers')
+          .insert({
+              name: data.name,
+              business_type: data.business_type,
+              contact_name: data.contact_name,
+              phone: data.phone,
+              county: data.county,
+              value_chain: primaryValueChain, 
+              value_chains: data.value_chain || [], 
+              location_lat: data.location?.lat,
+              location_lng: data.location?.lng,
+              created_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+      if (error) throw error
+
+      // 2. Add to buyer_contacts if contact info is present
+      if (data.contact_name && data.phone) {
+          await supabase.from('buyer_contacts').insert({
+              buyer_id: newBuyer.id,
+              name: data.contact_name,
+              phone: data.phone,
+              designation: data.contact_designation || 'Primary Contact', 
+              created_at: new Date().toISOString()
+          })
+      }
+
+      revalidatePath('/agent/buyers')
+      revalidatePath('/admin/buyers')
+
+      return { success: true, data: newBuyer }
+  } catch (error) {
+     console.error("Failed to create buyer:", error)
+     return { success: false, error: (error as Error).message } 
+  }
+}
+
+export async function updateBuyerContact(buyerId: string, contact: { name: string, phone: string, designation?: string }) {
+    const supabase = await createClient()
+
+    try {
+        // 1. Update the buyer's primary contact info
+        const { error: buyerError } = await supabase
+            .from('buyers')
+            .update({
+                contact_name: contact.name,
+                phone: contact.phone,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', buyerId)
+
+        if (buyerError) throw buyerError
+
+        // 2. Add to history in buyer_contacts
+        const { error: contactError } = await supabase
+            .from('buyer_contacts')
+            .insert({
+                buyer_id: buyerId,
+                name: contact.name,
+                phone: contact.phone,
+                designation: contact.designation || 'Updated Contact',
+                created_at: new Date().toISOString()
+            })
+
+        if (contactError) throw contactError
+
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to update buyer contact:", error)
+        return { success: false, error: (error as Error).message }
+    }
+}
+// Update buyer location (lat/lng)
+export async function updateBuyerLocation(buyerId: string, lat: number, lng: number) {
+    const supabase = await createClient()
+
+    try {
+        const { error } = await supabase
+            .from('buyers')
+            .update({
+                location_lat: lat,
+                location_lng: lng,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', buyerId)
+
+        if (error) throw error
+
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to update buyer location:", error)
+        return { success: false, error: (error as Error).message }
+    }
 }
 

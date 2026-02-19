@@ -17,14 +17,15 @@ export async function GET(request: Request) {
       if (user?.email) {
         const { data: access } = await supabase
           .from('profile_access')
-          .select('role')
-          .eq('email', user.email) // Note: In production you might want .ilike() but verify DB collation
+          .select('role, status')
+          .eq('email', user.email)
           .maybeSingle()
 
-        if (!access) {
-          // Identify is not allowed
+        if (!access || access.status === 'deactivated') {
+          // Identify is not allowed or deactivated
           await supabase.auth.signOut()
-          return NextResponse.redirect(`${origin}/auth/login?error=UnauthorizedAccess`)
+          const error = !access ? 'UnauthorizedAccess' : 'DeactivatedAccount'
+          return NextResponse.redirect(`${origin}/auth/login?error=${error}`)
         }
 
         // Sync profile if needed (idempotent upsert)
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
              id: user.id,
              email: user.email,
              role: access.role,
+             status: access.status,
              full_name: user.user_metadata.full_name,
          })
          

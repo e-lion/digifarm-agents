@@ -4,8 +4,10 @@ import { useActionState, useState } from 'react'
 import { updateProfile } from './actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { MultiSelect } from '@/components/ui/MultiSelect'
+import { kenyaCounties } from '@/lib/constants/counties'
 
-import { User, Phone, Mail, Shield, Pencil, Save, X } from 'lucide-react'
+import { User, Phone, Mail, Shield, Pencil, Save, X, MapPin } from 'lucide-react'
 
 type ProfileData = {
   first_name: string | null
@@ -13,10 +15,12 @@ type ProfileData = {
   phone_number: string | null
   email: string
   role: string | null
+  counties?: string[] | null
 }
 
 export default function ProfileForm({ profile, email }: { profile: ProfileData; email: string }) {
   const [isEditing, setIsEditing] = useState(false)
+  const [selectedCounties, setSelectedCounties] = useState<string[]>(profile.counties || [])
   const [state, formAction, isPending] = useActionState(updateProfile, null)
 
   // Close edit mode on success (you might want a useEffect here to watch state.success)
@@ -62,6 +66,8 @@ export default function ProfileForm({ profile, email }: { profile: ProfileData; 
                  <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{state.success}</div>
               )}
 
+              <input type="hidden" name="counties" value={JSON.stringify(selectedCounties)} />
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label htmlFor="firstName" className="text-sm font-medium text-gray-700">First Name</label>
@@ -99,6 +105,17 @@ export default function ProfileForm({ profile, email }: { profile: ProfileData; 
                  </div>
               </div>
 
+              <div className="space-y-2">
+                 <label className="text-sm font-medium text-gray-700">Operaring Counties</label>
+                 <MultiSelect
+                    options={kenyaCounties}
+                    selected={selectedCounties}
+                    onChange={setSelectedCounties}
+                    placeholder="Select counties..."
+                 />
+                 <p className="text-xs text-gray-500">Select the counties where you operate.</p>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <Button type="submit" className="flex-1" disabled={isPending}>
                   <Save className="h-4 w-4 mr-2" />
@@ -131,6 +148,23 @@ export default function ProfileForm({ profile, email }: { profile: ProfileData; 
                 <div>
                   <p className="text-sm font-medium text-gray-900">Role</p>
                   <p className="text-sm text-gray-500 uppercase">{profile.role || 'Agent'}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <MapPin className="h-5 w-5 text-gray-400 mt-1" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Operating Counties</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {profile.counties && profile.counties.length > 0 ? (
+                        profile.counties.map(county => (
+                            <span key={county} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs border border-gray-200">
+                                {county}
+                            </span>
+                        ))
+                    ) : (
+                        <p className="text-sm text-gray-500 italic">No counties selected</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

@@ -57,8 +57,12 @@ export function SearchableSelect({
     <div className="relative w-full" ref={containerRef}>
       <Command className="overflow-visible bg-transparent">
         {/* Main Search Input / Trigger */}
-        <div className={cn(
-          "group flex h-12 w-full items-center justify-between rounded-xl border-2 px-1 transition-all duration-200 outline-none",
+        <div 
+          onClick={() => {
+            if (!disabled) setOpen(true)
+          }}
+          className={cn(
+          "group flex h-12 w-full items-center justify-between rounded-xl border-2 px-1 transition-all duration-200 outline-none cursor-pointer",
           open 
             ? "border-green-600 ring-4 ring-green-600/10 bg-white" 
             : "border-gray-100 bg-gray-50/50 hover:border-green-200 hover:bg-white shadow-sm",

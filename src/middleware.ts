@@ -42,9 +42,13 @@ export async function middleware(request: NextRequest) {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, first_name, last_name, phone_number')
+        .select('role, first_name, last_name, phone_number, status')
         .eq('id', user.id)
         .single()
+
+      if (profile?.status === 'deactivated') {
+        return NextResponse.redirect(new URL('/auth/login?error=DeactivatedAccount', request.url))
+      }
 
       if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
         return NextResponse.redirect(new URL('/onboarding', request.url))
@@ -75,9 +79,13 @@ export async function middleware(request: NextRequest) {
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, first_name, last_name, phone_number')
+      .select('role, first_name, last_name, phone_number, status')
       .eq('id', user.id)
       .single()
+
+    if (profile?.status === 'deactivated') {
+      return NextResponse.redirect(new URL('/auth/login?error=DeactivatedAccount', request.url))
+    }
 
     if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
        return NextResponse.redirect(new URL('/onboarding', request.url))

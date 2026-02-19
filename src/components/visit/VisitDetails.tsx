@@ -1,15 +1,12 @@
-'use client'
-
-import { VisitForm } from '@/components/forms/DynamicVisitForm'
+import VisitForm from '@/components/forms/VisitForm'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedPlannedVisit, getOfflineNewVisits } from '@/lib/offline-storage'
 import { Loader2 } from 'lucide-react'
+import { getContactDesignations, getBuyerContacts } from '@/lib/actions/buyers'
 
 export function VisitDetails({ id }: { id: string }) {
 
-  // const isDraft = searchParams.get('isDraft') === 'true' // Optional: if still needed for initial check
-  
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visit, setVisit] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -17,13 +14,23 @@ export function VisitDetails({ id }: { id: string }) {
   const [loadingStatus, setLoadingStatus] = useState("Loading...")
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [availableDrafts, setAvailableDrafts] = useState<any[]>([])
+  const [designations, setDesignations] = useState<string[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [contacts, setContacts] = useState<any[]>([])
 
   useEffect(() => {
-    async function loadVisit() {
+    async function loadData() {
       if (!id) return 
 
       try {
         setLoading(true)
+        
+        // Load designations
+        if (navigator.onLine) {
+            const dests = await getContactDesignations()
+            setDesignations(dests)
+        }
+
         setLoadingStatus("Checking local drafts...")
         
         // 1. Check Offline Drafts (Priority)
@@ -31,19 +38,17 @@ export function VisitDetails({ id }: { id: string }) {
         setAvailableDrafts(drafts)
         
         const cleanId = id?.trim()
-        console.log("Checking drafts for ID:", cleanId, "Found:", drafts.length)
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const draft = drafts.find((d: any) => d.id === cleanId) as any
             if (draft) {
-                console.log("Draft found:", draft)
-                // Map flat draft fields to structural visit_details for the form
                 const mappedDraft = {
                     ...draft,
-                    isLocal: true, // Mark as local for the form
+                    isLocal: true,
                     visit_details: draft.visit_details || {
                         contact_name: draft.contact_name,
-                        phone: draft.phone,
+                        phone: draft.contact_phone, // Note: CreateVisitForm uses contact_phone, VisitForm uses phone
+                        contact_designation: draft.contact_designation,
                         active_farmers: draft.active_farmers,
                         is_potential_customer: draft.is_potential_customer,
                         trade_volume: draft.trade_volume,
@@ -56,34 +61,46 @@ export function VisitDetails({ id }: { id: string }) {
                 return
             }
 
-        // 2. Try online fetch with timeout
+        // 2. Try online fetch
         if (navigator.onLine) {
             setLoadingStatus("Fetching from server...")
             const supabase = createClient()
             
-            // Create a timeout promise
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout')), 5000)
-            )
+            // Fetch visit
+            const { data: visitData, error: visitError } = await supabase
+                .from('visits')
+                .select('*')
+                .eq('id', cleanId)
+                .single()
             
-            try {
-                const fetchPromise = supabase
-                    .from('visits')
-                    .select('*')
-                    .eq('id', cleanId)
+            if (!visitError && visitData) {
+                // Fetch buyer details to get ID and potential pre-fill data
+                const { data: buyerData } = await supabase
+                    .from('buyers')
+                    .select('id, contact_name, phone')
+                    .eq('name', visitData.buyer_name)
                     .single()
-                
-                // Race against timeout
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const { data, error: fetchError } = await Promise.race([fetchPromise, timeoutPromise]) as any
-                
-                if (!fetchError && data) {
-                    setVisit(data)
-                    setLoading(false)
-                    return
+
+                if (buyerData) {
+                    // Fetch all existing contacts for this buyer
+                    const buyerContacts = await getBuyerContacts(buyerData.id)
+                    setContacts(buyerContacts)
+                    
+                    // Attach buyer_id to visit object
+                    visitData.buyer_id = buyerData.id
+
+                    // If visit_details is empty/null (not completed), fetch buyer details to pre-fill
+                    if (!visitData.visit_details || Object.keys(visitData.visit_details).length === 0) {
+                        visitData.visit_details = {
+                            contact_name: buyerData.contact_name,
+                            phone: buyerData.phone
+                        }
+                    }
                 }
-            } catch {
-                console.warn("Server fetch timed out or failed, falling back to cache")
+
+                setVisit(visitData)
+                setLoading(false)
+                return
             }
         }
 
@@ -103,7 +120,7 @@ export function VisitDetails({ id }: { id: string }) {
       }
     }
 
-    loadVisit()
+    loadData()
   }, [id])
 
   if (loading) {
@@ -156,13 +173,25 @@ export function VisitDetails({ id }: { id: string }) {
 
   return (
     <>
-      <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Visit Checklist</h2>
-        <p className="text-sm text-gray-500">{visit.buyer_name}</p>
+      <div className="mb-4 flex flex-row items-center justify-between">
+        <div>
+            <h2 className="text-xl font-bold text-gray-900">Visit Checklist</h2>
+            <p className="text-sm text-gray-500">{visit.buyer_name}</p>
+        </div>
+        {visit.visit_category && (
+            <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                visit.visit_category === 'First Time' 
+                    ? 'bg-green-50 text-green-700 border-green-200' 
+                    : 'bg-blue-50 text-blue-700 border-blue-200'
+            }`}>
+                {visit.visit_category}
+            </span>
+        )}
       </div>
       
       <VisitForm 
         visitId={visit.id} 
+        buyerId={visit.buyer_id}
         buyerName={visit.buyer_name} 
         buyerType={visit.buyer_type}
         targetPolygon={visit.polygon_coords} 
@@ -170,6 +199,8 @@ export function VisitDetails({ id }: { id: string }) {
         status={visit.status}
         checkInLocation={visit.check_in_location}
         isLocal={visit.isLocal}
+        contactDesignations={designations}
+        existingContacts={contacts}
       />
     </>
   )

@@ -3,34 +3,54 @@
 import { useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import * as z from 'zod'
+import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PhoneInput, isValidPhoneNumber } from '@/components/ui/PhoneInput'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { MapPin, CheckCircle, XCircle, WifiOff } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { MapPin, CheckCircle, XCircle, WifiOff, AlertCircle } from 'lucide-react'
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
+import distance from '@turf/distance'
 import { point, polygon } from '@turf/helpers'
-import circle from '@turf/circle'
-import { useRouter } from 'next/navigation'
 import { updateVisitAction, recordCheckInAction } from '@/lib/actions/visits'
-import dynamic from 'next/dynamic'
-import { toast } from 'sonner'
-
+import { updateBuyerLocation } from '@/lib/actions/buyers'
 
 const formSchema = z.object({
-  contact_name: z.string().min(2, 'Name is required'),
-  phone: z.string().refine(isValidPhoneNumber, { message: 'Invalid phone number' }),
+  contact_id: z.string().optional(),
+  contact_name: z.string().optional(),
+  phone: z.string().optional(),
+  contact_designation: z.string().optional(),
   active_farmers: z.number().min(0, 'Must be 0 or more'),
   is_potential_customer: z.union([z.literal('Yes'), z.literal('No'), z.literal('Maybe')], {
     message: "Please select if they are a potential customer"
   }),
   trade_volume: z.string().min(1, 'Volume is required'),
   buyer_feedback: z.string().optional(),
+}).superRefine((data, ctx) => {
+    // If adding a new contact (or no ID set which implies new), require name and phone
+    if (!data.contact_id || data.contact_id === 'new') {
+        if (!data.contact_name || data.contact_name.length < 2) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Name is required for new contact",
+                path: ["contact_name"]
+            })
+        }
+        if (!data.phone || !isValidPhoneNumber(data.phone)) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Valid phone number is required",
+                path: ["phone"]
+            })
+        }
+    }
 })
 
 type FormValues = z.infer<typeof formSchema>
-
 
 
 const DynamicMap = dynamic(() => import('@/components/map/Map'), { 
@@ -40,15 +60,19 @@ const DynamicMap = dynamic(() => import('@/components/map/Map'), {
 
 export default function VisitForm({ 
   visitId, 
+  buyerId, 
   buyerName, 
   buyerType,
   targetPolygon,
   initialData,
   status,
   checkInLocation,
-  isLocal
+  isLocal,
+  contactDesignations = [],
+  existingContacts = []
 }: { 
   visitId: string, 
+  buyerId?: string,
   buyerName: string, 
   buyerType?: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,16 +82,25 @@ export default function VisitForm({
   status?: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   checkInLocation?: any,
-  isLocal?: boolean
+  isLocal?: boolean,
+  contactDesignations?: string[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  existingContacts?: any[]
 }) {
   const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null)
   const [locationChecking, setLocationChecking] = useState(false)
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isOfflineSaved, setIsOfflineSaved] = useState(false)
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false)
   const [mapBounds, setMapBounds] = useState<[number, number][] | null>(null)
+  const [distanceToTarget, setDistanceToTarget] = useState<number | null>(null)
+  const [showNoLocationPrompt, setShowNoLocationPrompt] = useState(false)
+  const [selectedContactId, setSelectedContactId] = useState<string>('new')
   const router = useRouter()
 
+
+  // ... (parsePoint, savedCoords, getPolygonCenter, mapPolygons, mapMarkers helpers) ...
   // Helper to parse check_in_location from Supabase (can be WKT string or GeoJSON object)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsePoint = (pt: any) => {
@@ -84,43 +117,40 @@ export default function VisitForm({
     }
 
     // If it's a string (WKT or HEX EWKB)
-    if (typeof pt === 'string') {
-      // WKT Handle: POINT(lng lat)
-      if (pt.startsWith('POINT(')) {
-        const match = pt.match(/\((.*)\)/)
-        if (match) {
-          const parts = match[1].trim().split(/\s+/)
-          if (parts.length >= 2) {
-            const [lng, lat] = parts.map(Number)
-            return { lat, lng }
-          }
+    if (pt.startsWith('POINT(')) {
+      const match = pt.match(/\((.*)\)/)
+      if (match) {
+        const parts = match[1].trim().split(/\s+/)
+        if (parts.length >= 2) {
+          const [lng, lat] = parts.map(Number)
+          return { lat, lng }
         }
       }
-      
-      // HEX EWKB Handle (Standard PostGIS return format)
-      // Usually starts with 0101 (Little Endian Point)
-      if (/^[0-9A-Fa-f]+$/.test(pt) && pt.length >= 50) {
-        try {
-          // Point 4326 EWKB: [1 byte endian] [4 bytes type] [4 bytes SRID] [8 bytes X] [8 bytes Y]
-          // Endian (01) + Type (01000020) + SRID (E6100000) = 9 bytes total before coords (18 hex chars)
-          // X starts at char 18 (byte 9), Y starts at char 34 (byte 17)
-          const hexToDouble = (hex: string, le: boolean) => {
-            const bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)))
-            if (!le) bytes.reverse() // Basic handled for big endian if needed
-            const view = new DataView(bytes.buffer)
-            return view.getFloat64(0, true) // Leaflet/PostGIS mostly LE
-          }
-          
-          const isLittleEndian = pt.startsWith('01')
-          const lng = hexToDouble(pt.substring(18, 34), isLittleEndian)
-          const lat = hexToDouble(pt.substring(34, 50), isLittleEndian)
-          
-          if (!isNaN(lat) && !isNaN(lng)) {
-            return { lat, lng }
-          }
-        } catch (e) {
-          console.error("EWKB Parse Error:", e)
+    }
+    
+    // HEX EWKB Handle (Standard PostGIS return format)
+    // Usually starts with 0101 (Little Endian Point)
+    if (/^[0-9A-Fa-f]+$/.test(pt) && pt.length >= 50) {
+      try {
+        // Point 4326 EWKB: [1 byte endian] [4 bytes type] [4 bytes SRID] [8 bytes X] [8 bytes Y]
+        // Endian (01) + Type (01000020) + SRID (E6100000) = 9 bytes total before coords (18 hex chars)
+        // X starts at char 18 (byte 9), Y starts at char 34 (byte 17)
+        const hexToDouble = (hex: string, le: boolean) => {
+          const bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)))
+          if (!le) bytes.reverse() // Basic handled for big endian if needed
+          const view = new DataView(bytes.buffer)
+          return view.getFloat64(0, true) // Leaflet/PostGIS mostly LE
         }
+        
+        const isLittleEndian = pt.startsWith('01')
+        const lng = hexToDouble(pt.substring(18, 34), isLittleEndian)
+        const lat = hexToDouble(pt.substring(34, 50), isLittleEndian)
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+          return { lat, lng }
+        }
+      } catch (e) {
+        console.error("EWKB Parse Error:", e)
       }
     }
     
@@ -158,14 +188,38 @@ export default function VisitForm({
     popup: 'Your Location'
   }] : []
 
-  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       ...initialData,
-      phone: initialData?.phone || '', // Ensure default value to avoid uncontrolled error
-      agsi_business_type: initialData?.agsi_business_type || buyerType || ""
+      phone: initialData?.phone || '', 
+      contact_designation: initialData?.contact_designation || '',
+      agsi_business_type: initialData?.agsi_business_type || buyerType || "",
+      contact_id: selectedContactId
     }
   })
+
+  // Watch selected contact to toggle UI
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const selectedContact = existingContacts?.find((c: any) => c.id === selectedContactId)
+
+  // Handle contact selection
+  const handleContactSelect = (contactId: string) => {
+      setSelectedContactId(contactId)
+      setValue('contact_id', contactId)
+      
+      if (contactId === 'new') {
+          setValue('contact_name', '')
+          setValue('phone', '')
+          setValue('contact_designation', '')
+      } else {
+           // Clear fields so validaton doesn't get confused, 
+           // but technically we don't validate them if contact_id != 'new'
+           setValue('contact_name', '')
+           setValue('phone', '')
+           setValue('contact_designation', '')
+      }
+  }
 
   // If completed, show summary
   if (status === 'completed' && initialData) {
@@ -237,6 +291,10 @@ export default function VisitForm({
                    <label className="text-xs text-gray-500 uppercase">Phone</label>
                    <p className="font-medium">{initialData.phone}</p>
                 </div>
+                 <div>
+                   <label className="text-xs text-gray-500 uppercase">Designation</label>
+                   <p className="font-medium">{initialData.contact_designation || '-'}</p>
+                </div>
                 <div>
                    <label className="text-xs text-gray-500 uppercase">Farmers</label>
                    <p className="font-medium">{initialData.active_farmers}</p>
@@ -269,18 +327,69 @@ export default function VisitForm({
     )
   }
 
-  // Helper to format polygon for our Map component
+  const handleUpdateBuyerLocation = async () => {
+      if (!coords || !buyerId) {
+          toast.error("Cannot update location: Missing coordinates or buyer ID")
+          return
+      }
+      
+      setIsUpdatingLocation(true)
+      try {
+          // 1. Update buyer location
+          const result = await updateBuyerLocation(buyerId, coords.lat, coords.lng)
+          
+          if (!result.success) {
+              toast.error(result.error || "Failed to update buyer location")
+              return
+          }
 
+          toast.success("Buyer location updated")
+          
+          // 2. Proceed to check-in (now valid)
+          // We can manually set isWithinRange to true to unlock the form
+          setIsWithinRange(true)
+          setShowNoLocationPrompt(false)
+          
+          // Also record check-in effectively
+          if (visitId) {
+             await recordCheckInAction(visitId, coords)
+          }
 
+      } catch (error) {
+          console.error(error)
+          toast.error('Failed to update location')
+      } finally {
+          setIsUpdatingLocation(false)
+      }
+  }
 
+  const handleOffsiteVisit = async () => {
+      if (!coords || !visitId) return
+      
+      setLocationChecking(true)
+      try {
+          // Record check-in at current location (even if out of range)
+          const result = await recordCheckInAction(visitId, coords)
+          if (result.success) {
+              toast.success("Checked in as Offsite Visit")
+              setIsWithinRange(true) // Allow proceeding
+              setShowNoLocationPrompt(false)
+          } else {
+              toast.error(result.error || "Failed to check in")
+          }
+      } catch (error) {
+          console.error(error)
+          toast.error("An error occurred")
+      } finally {
+          setLocationChecking(false)
+      }
+  }
 
-
-  
-
-  // ... checkLocation remains same ...
   const checkLocation = () => {
     setLocationChecking(true)
     setError(null)
+    setIsWithinRange(null)
+    setShowNoLocationPrompt(false)
 
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser')
@@ -303,25 +412,8 @@ export default function VisitForm({
       
       
       if (!targetPolygon) {
-        setIsWithinRange(true)
+        setShowNoLocationPrompt(true)
         setLocationChecking(false)
-        
-        // Generate 100m circle for this location since it wasn't set during creation
-        try {
-            const center = point([longitude, latitude])
-            const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
-            
-            if (navigator.onLine && !isLocal) {
-                recordCheckInAction(visitId, { lat: latitude, lng: longitude }, circularPolygon.geometry)
-            } else {
-                toast.info("Working offline. Location verified locally.")
-            }
-        } catch (e) {
-            console.error("Error generating on-site polygon:", e)
-            if (navigator.onLine && !isLocal) {
-                recordCheckInAction(visitId, { lat: latitude, lng: longitude })
-            }
-        }
         return
       }
 
@@ -333,11 +425,18 @@ export default function VisitForm({
         setIsWithinRange(isInside)
         
         if (isInside) {
+          setDistanceToTarget(0)
           if (navigator.onLine && !isLocal) {
             recordCheckInAction(visitId, { lat: latitude, lng: longitude })
           } else {
              toast.info("Working offline. Location verified locally.")
           }
+        } else {
+          // Calculate distance to center for UI feedback
+          const [centerLng, centerLat] = getPolygonCenter(targetPolygon).reverse()
+          const centerPt = point([centerLng, centerLat])
+          const dist = distance(pt, centerPt, { units: 'kilometers' })
+          setDistanceToTarget(dist)
         }
       } catch (e) {
         console.error("Geo check error", e)
@@ -362,37 +461,14 @@ export default function VisitForm({
     })
   }
 
-  const handleRelocate = async () => {
-    if (!coords) return
-    setLocationChecking(true)
-    setError(null)
-    
-    try {
-        const center = point([coords.lng, coords.lat])
-        const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
-        
-        let result: { success: boolean; error: string | null } = { success: true, error: null }
-        if (navigator.onLine && !isLocal) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            result = await recordCheckInAction(visitId, coords, circularPolygon.geometry) as any
-        } else {
-            toast.info("Relocated locally while offline.")
-        }
-        
-        if (result?.error) {
-            setError(result.error)
-        } else {
-            setIsWithinRange(true)
-        }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-        setError(`Relocation Failed: ${e.message}`)
-    } finally {
-        setLocationChecking(false)
-    }
-  }
-
   const handleOfflineSave = async (data: FormValues) => {
+      // Append selected contact info if available to ensure it's saved in the record
+      if (selectedContactId !== 'new' && selectedContact) {
+          data.contact_name = selectedContact.name
+          data.phone = selectedContact.phone
+          data.contact_designation = selectedContact.designation
+      }
+
       try {
           const { saveOfflineReport } = await import('@/lib/offline-storage')
           await saveOfflineReport({
@@ -418,6 +494,13 @@ export default function VisitForm({
   }
 
   const onSubmit = async (data: FormValues) => {
+    // Manually inject selected contact details if not "new"
+    if (selectedContactId !== 'new' && selectedContact) {
+        data.contact_name = selectedContact.name
+        data.phone = selectedContact.phone
+        data.contact_designation = selectedContact.designation
+    }
+
     // 1. Explicit Offline Check (or Local Draft)
     if (!navigator.onLine || isLocal) {
         await handleOfflineSave(data)
@@ -439,7 +522,8 @@ export default function VisitForm({
         console.warn("Online submission failed, falling back to offline save", e)
         toast.info("Connection unstable. Saving locally instead.")
         await handleOfflineSave(data)
-    }  }
+    }  
+  }
 
   if (isOfflineSaved) {
     return (
@@ -523,15 +607,78 @@ export default function VisitForm({
             </Button>
 
             {isWithinRange === false && coords && (
-                <Button 
-                type="button" 
-                variant="outline"
-                onClick={handleRelocate} 
-                isLoading={locationChecking}
-                className="w-full h-12 rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-bold"
-                >
-                Relocate & Check-in
-                </Button>
+                <div className="space-y-3 p-4 bg-yellow-50 rounded-xl border border-yellow-200 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                            <h4 className="font-semibold text-yellow-900">You are not at the designated location</h4>
+                            <p className="text-sm text-yellow-700">
+                                Distance: {distanceToTarget ? `${Math.round(distanceToTarget * 1000)}m` : 'Unknown'} away.
+                                Allowable range is 100m.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                         <Button 
+                            type="button" 
+                            variant="secondary"
+                            onClick={handleUpdateBuyerLocation} 
+                            disabled={!buyerId || isUpdatingLocation}
+                            isLoading={isUpdatingLocation}
+                            className="w-full border-yellow-300 text-yellow-800 bg-yellow-100 hover:bg-yellow-200"
+                        >
+                            Update Buyer Location
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={handleOffsiteVisit} 
+                            disabled={locationChecking}
+                            isLoading={locationChecking}
+                            className="w-full border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                        >
+                            Record Offsite Visit
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {showNoLocationPrompt && coords && (
+                <div className="space-y-3 p-4 bg-blue-50 rounded-xl border border-blue-200 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-start gap-3">
+                        <MapPin className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                            <h4 className="font-semibold text-blue-900">Buyer Location Not Set</h4>
+                            <p className="text-sm text-blue-700">
+                                This buyer doesn&apos;t have a designated location. Is your current position the correct buyer location?
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                         <Button 
+                            type="button" 
+                            variant="secondary"
+                            onClick={handleUpdateBuyerLocation} 
+                            disabled={!buyerId || isUpdatingLocation}
+                            isLoading={isUpdatingLocation}
+                            className="w-full border-blue-300 text-blue-800 bg-blue-100 hover:bg-blue-200"
+                        >
+                            Yes, set as Buyer Location
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={handleOffsiteVisit} 
+                            disabled={locationChecking}
+                            isLoading={locationChecking}
+                            className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                        >
+                            No, this is a Remote Visit
+                        </Button>
+                    </div>
+                </div>
             )}
             
             {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
@@ -545,73 +692,168 @@ export default function VisitForm({
             <CardTitle>Visit Report: {buyerName}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 mb-2">
-                <span className="text-sm font-medium text-gray-500">Buyer</span>
-                <span className="text-sm font-bold text-gray-900">{buyerName}</span>
-              </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              
+              {/* 1. Contact Management Section */}
+              <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <span className="text-sm font-medium text-gray-500">Buyer</span>
+                    <span className="text-sm font-bold text-gray-900">{buyerName}</span>
+                  </div>
 
-               <div>
-                <label className="text-sm font-medium text-gray-700">Contact Name</label>
-                <Input {...register('contact_name')} placeholder="e.g. John Doe" />
-                {errors.contact_name && <p className="text-xs text-red-500 mt-1">{errors.contact_name.message}</p>}
-              </div>
+                  <div className="space-y-2">
+                       <label className="text-sm font-medium text-gray-700 block">Who did you meet?</label>
+                       
+                       {existingContacts && existingContacts.length > 0 ? (
+                           <div className="grid gap-3">
+                               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                               {existingContacts.map((c: any) => (
+                                   <div 
+                                     key={c.id}
+                                     onClick={() => handleContactSelect(c.id)}
+                                     className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                         selectedContactId === c.id 
+                                         ? 'border-green-600 bg-green-50' 
+                                         : 'border-gray-100 hover:border-green-100 bg-white'
+                                     }`}
+                                   >
+                                       <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className={`font-bold ${selectedContactId === c.id ? 'text-green-900' : 'text-gray-900'}`}>{c.name}</p>
+                                                <p className="text-sm text-gray-500 flex items-center gap-2">
+                                                    <span>{c.designation || 'No Role'}</span>
+                                                    <span>•</span>
+                                                    <span>{c.phone}</span>
+                                                </p>
+                                            </div>
+                                            {selectedContactId === c.id && <CheckCircle className="h-5 w-5 text-green-600" />}
+                                       </div>
+                                   </div>
+                               ))}
 
-              <div>
-                <label className="text-sm font-medium text-gray-700">Phone</label>
-                <Controller
-                  name="phone"
-                  control={control}
-                  render={({ field }) => (
-                    <PhoneInput 
-                      value={field.value} 
-                      onChange={field.onChange}
-                      placeholder="Enter phone number"
-                      error={errors.phone?.message}
-                    />
+                               {/* Option to Add New */}
+                               <div 
+                                 onClick={() => handleContactSelect('new')}
+                                 className={`p-3 rounded-xl border-2 border-dashed cursor-pointer flex items-center justify-center gap-2 transition-all ${
+                                     selectedContactId === 'new' 
+                                     ? 'border-green-600 bg-green-50 text-green-700 font-medium' 
+                                     : 'border-gray-300 text-gray-500 hover:border-green-400 hover:text-green-600'
+                                 }`}
+                               >
+                                   <span>+ Add New Contact</span>
+                               </div>
+                           </div>
+                       ) : (
+                           // No existing contacts, default to new
+                           <div className="p-3 bg-blue-50 text-blue-700 rounded-lg text-sm">
+                               No existing contacts found. Please add one below.
+                           </div>
+                       )}
+                  </div>
+
+                  {/* Show inputs only if adding new */}
+                  {(!existingContacts?.length || selectedContactId === 'new') && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 animate-in fade-in slide-in-from-top-2 border-t border-gray-100 mt-2">
+                           <div>
+                            <label className="text-sm font-medium text-gray-700">Contact Name <span className="text-red-500">*</span></label>
+                            <Input {...register('contact_name')} placeholder="e.g. John Doe" />
+                            {errors.contact_name && <p className="text-xs text-red-500 mt-1">{errors.contact_name.message}</p>}
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Phone <span className="text-red-500">*</span></label>
+                            <Controller
+                              name="phone"
+                              control={control}
+                              render={({ field }) => (
+                                <PhoneInput 
+                                  value={field.value || ''} 
+                                  onChange={field.onChange}
+                                  placeholder="Enter phone number"
+                                  error={errors.phone?.message}
+                                />
+                              )}
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                             <label className="text-sm font-medium text-gray-700">Designation</label>
+                             <Controller
+                                name="contact_designation"
+                                control={control}
+                                render={({ field }) => (
+                                    <SearchableSelect
+                                        options={contactDesignations}
+                                        value={field.value || ""}
+                                        onChange={field.onChange}
+                                        placeholder="Select designation..."
+                                    />
+                                )}
+                             />
+                             {errors.contact_designation && <p className="text-xs text-red-500 mt-1">{errors.contact_designation.message}</p>}
+                          </div>
+                      </div>
                   )}
-                />
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700">Active Farmers</label>
-                <Input {...register('active_farmers', { valueAsNumber: true })} type="number" />
-                {errors.active_farmers && <p className="text-xs text-red-500 mt-1">{errors.active_farmers.message}</p>}
+              <div className="border-t border-gray-100 my-4"></div>
+
+              {/* 2. Business Intelligence Section */}
+              <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                      Business Intelligence
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Active Farmers</label>
+                        <Input {...register('active_farmers', { valueAsNumber: true })} type="number" />
+                        {errors.active_farmers && <p className="text-xs text-red-500 mt-1">{errors.active_farmers.message}</p>}
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Trade Volume / Month</label>
+                        <Input {...register('trade_volume')} placeholder="e.g. 5000 units or 10 tons" />
+                        {errors.trade_volume && <p className="text-xs text-red-500 mt-1">{errors.trade_volume.message}</p>}
+                      </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Is this a qualifying lead?</label>
+                    <div className="flex gap-4 mt-2">
+                      {['Yes', 'No', 'Maybe'].map((option) => (
+                        <label key={option} className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                          <input
+                            type="radio"
+                            value={option}
+                            {...register('is_potential_customer')}
+                            className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300"
+                          />
+                          <span className="text-sm text-gray-700">{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {errors.is_potential_customer && (
+                      <p className="text-xs text-red-500 mt-1">{errors.is_potential_customer.message}</p>
+                    )}
+                  </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700">Are they a potential customer? (Qualifying Lead)</label>
-                <div className="flex gap-4 mt-2">
-                  {['Yes', 'No', 'Maybe'].map((option) => (
-                    <label key={option} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        value={option}
-                        {...register('is_potential_customer')}
-                        className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300"
-                      />
-                      <span className="text-sm text-gray-700">{option}</span>
-                    </label>
-                  ))}
-                </div>
-                {errors.is_potential_customer && (
-                  <p className="text-xs text-red-500 mt-1">{errors.is_potential_customer.message}</p>
-                )}
-              </div>
+              <div className="border-t border-gray-100 my-4"></div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700">Trade Volume per Month</label>
-                <Input {...register('trade_volume')} placeholder="e.g. 5000 units or 10 tons" />
-                {errors.trade_volume && <p className="text-xs text-red-500 mt-1">{errors.trade_volume.message}</p>}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">Feedback</label>
-                <textarea 
-                  {...register('buyer_feedback')}
-                  className="flex min-h-[100px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
-                  placeholder="Additional notes..."
-                />
+              {/* 3. Visit Summary Section */}
+              <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                      Visit Summary
+                  </h3>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Feedback / Notes</label>
+                    <textarea 
+                      {...register('buyer_feedback')}
+                      className="flex min-h-[100px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
+                      placeholder="Enter specific feedback, observations, or next steps..."
+                    />
+                  </div>
               </div>
 
               <Button type="submit" className="w-full" isLoading={isSubmitting}>
@@ -620,6 +862,7 @@ export default function VisitForm({
             </form>
           </CardContent>
         </Card>
+
       )}
     </div>
   )

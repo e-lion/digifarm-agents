@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Map, List, User, PlusCircle } from 'lucide-react'
+import { Map, List, User, PlusCircle, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function MobileNav() {
@@ -12,6 +12,7 @@ export function MobileNav() {
     { href: '/agent/routes', label: 'Routes', icon: List },
     { href: '/agent/map', label: 'Map', icon: Map },
     { href: '/agent/visit/new', label: 'New Visit', icon: PlusCircle }, // Shortcut
+    { href: '/agent/buyers', label: 'Buyers', icon: ShoppingBag },
     { href: '/agent/profile', label: 'Profile', icon: User },
   ]
 
