@@ -495,7 +495,8 @@ export async function getVisits(page: number, pageSize: number, filters: {
       agent_name: agent?.full_name || 'Unknown Agent',
       agent_email: agent?.email || 'Unknown Email',
       actual_date: v.checked_in_at,
-      feedback: details?.buyer_feedback || null
+      feedback: details?.buyer_feedback || null,
+      active_farmers: details?.active_farmers || 0
     }
   })
 

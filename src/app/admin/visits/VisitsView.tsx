@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { debounce } from 'lodash'
 import { getVisits } from '@/lib/actions/visits'
-import { Search, Filter, ExternalLink, Calendar, User, ShoppingBag, Tag, CheckCircle2, ChevronLeft, ChevronRight, Download, MessageSquare } from 'lucide-react'
+import { Search, Filter, ExternalLink, Calendar, User, ShoppingBag, Tag, CheckCircle2, ChevronLeft, ChevronRight, Download, MessageSquare, Users } from 'lucide-react'
 
 interface Visit {
   id: string
@@ -22,6 +22,7 @@ interface Visit {
   agent_email: string
   actual_date?: string
   feedback?: string
+  active_farmers?: number
 }
 
 interface VisitsViewProps {
@@ -109,7 +110,7 @@ export function VisitsView({
             endDate: currentEndDate
         })
         
-        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Status', 'Feedback']
+        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Active Farmers', 'Status', 'Feedback']
         const csvContent = [
             headers.join(','),
             ...allVisits.map(v => [
@@ -119,6 +120,7 @@ export function VisitsView({
                 `"${v.agent_name}"`,
                 v.agent_email,
                 v.visit_category || 'General',
+                v.active_farmers || 0,
                 v.status,
                 `"${(v.feedback || '').replace(/"/g, '""')}"`
             ].join(','))
@@ -298,6 +300,12 @@ export function VisitsView({
                       Category
                     </div>
                   </th>
+                  <th className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Farmers
+                    </div>
+                  </th>
                   <th className="px-6 py-4">Feedback</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Details</th>
@@ -342,6 +350,9 @@ export function VisitsView({
                         <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-100 font-medium">
                           {visit.visit_category || 'General'}
                         </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-bold text-gray-900">{visit.active_farmers || 0}</span>
                       </td>
                       <td className="px-6 py-4">
                         {visit.feedback ? (
