@@ -4,11 +4,14 @@ import VisitForm from '@/components/forms/VisitForm'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedPlannedVisit, getOfflineNewVisits } from '@/lib/offline-storage'
-import { Loader2 } from 'lucide-react'
-import { getContactDesignations, getBuyerContacts } from '@/lib/actions/buyers'
+import { Loader2, XCircle } from 'lucide-react'
+import { getContactDesignations } from '@/lib/actions/buyers'
+import { Card, CardContent } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { useRouter } from 'next/navigation'
 
 export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: boolean }) {
-
+  const router = useRouter()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visit, setVisit] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -27,12 +30,6 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
       try {
         setLoading(true)
         
-        // Load designations
-        if (navigator.onLine) {
-            const dests = await getContactDesignations()
-            setDesignations(dests)
-        }
-
         setLoadingStatus("Checking local drafts...")
         
         // 1. Check Offline Drafts (Priority)
@@ -63,29 +60,32 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
                 return
             }
 
-        // 2. Try online fetch
+        // 2. Online fetch (Consolidated)
         if (navigator.onLine) {
             setLoadingStatus("Fetching from server...")
             const supabase = createClient()
             
-            // Fetch visit
-            const { data: visitData, error: visitError } = await supabase
-                .from('visits')
-                .select('*')
-                .eq('id', cleanId)
-                .single()
+            // Fetch everything in parallel to eliminate the waterfall
+            // 1. Fetch designations
+            // 2. Fetch visit with buyer details and contacts in a single query
+            const [designationsData, visitResponse] = await Promise.all([
+                getContactDesignations(),
+                supabase
+                    .from('visits')
+                    .select('*, buyers:buyer_id(*, buyer_contacts(*))')
+                    .eq('id', cleanId)
+                    .single()
+            ])
+
+            setDesignations(designationsData)
+
+            const { data: visitData, error: visitError } = visitResponse
             
             if (!visitError && visitData) {
-                // Fetch buyer details to get ID and potential pre-fill data
-                const { data: buyerData } = await supabase
-                    .from('buyers')
-                    .select('id, contact_name, phone')
-                    .eq('name', visitData.buyer_name)
-                    .single()
-
+                // Extract relational data
+                const buyerData = Array.isArray(visitData.buyers) ? visitData.buyers[0] : visitData.buyers
                 if (buyerData) {
-                    // Fetch all existing contacts for this buyer
-                    const buyerContacts = await getBuyerContacts(buyerData.id)
+                    const buyerContacts = buyerData.buyer_contacts || []
                     setContacts(buyerContacts)
                     
                     // Attach buyer_id to visit object
@@ -170,6 +170,42 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
                 Reload Page
             </button>
         </div>
+    )
+  }
+
+  // Calculate if visit is in the past and still planned
+  const today = new Date()
+  const offset = today.getTimezoneOffset()
+  const localToday = new Date(today.getTime() - (offset*60*1000))
+  const todayString = localToday.toISOString().split('T')[0]
+  
+  const isExpired = visit?.status === 'planned' && visit?.scheduled_date < todayString && !isAdmin
+
+  if (isExpired) {
+    return (
+      <div className="space-y-6">
+        <div className="mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Visit Expired</h2>
+            <p className="text-sm text-gray-500">{visit.buyer_name}</p>
+        </div>
+
+        <Card className="bg-amber-50 border-amber-200">
+           <CardContent className="pt-6 flex flex-col items-center text-center gap-4">
+              <div className="h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center">
+                 <XCircle className="h-8 w-8 text-amber-600" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-amber-900">This visit has expired</h3>
+                <p className="text-sm text-amber-700 max-w-xs">
+                  This visit was scheduled for <strong>{new Date(visit.scheduled_date).toLocaleDateString()}</strong> and was not completed. Historical planned visits cannot be modified.
+                </p>
+              </div>
+              <Button onClick={() => router.push('/agent/routes')} variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100">
+                Back to Routes
+              </Button>
+           </CardContent>
+        </Card>
+      </div>
     )
   }
 

@@ -307,20 +307,29 @@ export function RouteList({ userId }: { userId: string }) {
                   </div>
 
                   <div className="space-y-4">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {dayVisits.map((visit: any) => {
                       const isOfflinePending = offlineIds.includes(visit.id)
                       const isDraft = visit.isDraft
+                      const isPastPlanned = activeTab === 'history' && visit.status === 'planned'
+                      const isClickable = !isPastPlanned
+                      
+                      const CardWrapper = isClickable ? Link : 'div'
+                      const wrapperProps = isClickable 
+                        ? { href: isDraft ? `/agent/visit/details?id=${visit.id}&isDraft=true` : `/agent/visit/details?id=${visit.id}` } 
+                        : { } as any
+
                       return (
-                      <Link 
+                      <CardWrapper 
                         key={visit.id} 
-                        href={isDraft ? `/agent/visit/details?id=${visit.id}&isDraft=true` : `/agent/visit/details?id=${visit.id}`} 
+                        {...wrapperProps}
                         className="block"
                       >
                         <Card className={cn(
-                            "group overflow-hidden border-l-4 shadow-sm active:scale-[0.98] transition-all hover:shadow-md cursor-pointer relative",
+                            "group overflow-hidden border-l-4 shadow-sm active:scale-[0.98] transition-all hover:shadow-md relative",
+                            isClickable ? "cursor-pointer" : "cursor-default opacity-80 bg-gray-50/50",
                             isDraft ? "border-l-blue-400 bg-blue-50/10" :
-                            isOfflinePending ? "border-l-orange-500" : "border-l-green-600"
+                            isOfflinePending ? "border-l-orange-500" : 
+                            isPastPlanned ? "border-l-gray-300" : "border-l-green-600"
                         )}>
                           <CardContent className="p-4 flex items-center justify-between">
                             <div className="space-y-2">
@@ -328,16 +337,17 @@ export function RouteList({ userId }: { userId: string }) {
                                 {visit.buyer_name}
                               </h3>
                               <div className="flex flex-wrap items-center text-sm text-gray-500 gap-x-4 gap-y-1">
-                                {offlineIds.includes(visit.id) ? (
+                                {isOfflinePending ? (
                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-orange-100 text-orange-700 flex items-center gap-1">
                                      <WifiOff className="h-3 w-3" /> Pending Sync
                                    </span>
                                 ) : (
                                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${
                                     isDraft ? 'bg-blue-100 text-blue-700' :
+                                    isPastPlanned ? 'bg-gray-100 text-gray-600' :
                                     visit.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                                   }`}>
-                                    {isDraft ? 'Offline Draft' : visit.status}
+                                    {isDraft ? 'Offline Draft' : isPastPlanned ? 'Missed' : visit.status}
                                   </span>
                                 )}
                                 {visit.activity_type && (
@@ -354,7 +364,7 @@ export function RouteList({ userId }: { userId: string }) {
                             </div>
                             
                             <div className="flex items-center gap-2 relative z-20">
-                                {!isDraft && visit.status !== 'completed' && (
+                                {!isDraft && visit.status !== 'completed' && activeTab === 'upcoming' && (
                                    <Button 
                                       size="sm" 
                                       variant="outline"
@@ -365,26 +375,31 @@ export function RouteList({ userId }: { userId: string }) {
                                      <RefreshCw className="h-5 w-5" />
                                    </Button>
                                 )}
-                                <Button size="sm" variant="outline" className="h-10 w-10 p-0 rounded-full border-gray-200 group-hover:border-green-200 group-hover:bg-green-50 shadow-sm transition-colors cursor-pointer pointer-events-auto">
+                                <Button size="sm" variant="outline" className={cn(
+                                    "h-10 w-10 p-0 rounded-full border-gray-200 shadow-sm transition-colors",
+                                    isClickable ? "group-hover:border-green-200 group-hover:bg-green-50 cursor-pointer pointer-events-auto" : "opacity-20 pointer-events-none"
+                                )}>
                                   <ArrowRight className="h-5 w-5 text-green-600" />
                                 </Button>
                             </div>
                           </CardContent>
                         </Card>
-                      </Link>
-                    )
-                  })}
+                      </CardWrapper>
+                      )
+                    })}
                   
                     {/* Add Stop Append Card */}
-                    <button 
-                      onClick={() => handleAddStop(date)}
-                      className="w-full mt-2 flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 hover:border-green-300 hover:bg-green-50 transition-all text-gray-500 hover:text-green-700 active:scale-[0.98] shadow-sm cursor-pointer"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-green-600 group-hover:border-green-300">
-                         <Plus className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm font-semibold">Add New Stop</span>
-                    </button>
+                    {activeTab === 'upcoming' && (
+                      <button 
+                        onClick={() => handleAddStop(date)}
+                        className="w-full mt-2 flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 hover:border-green-300 hover:bg-green-50 transition-all text-gray-500 hover:text-green-700 active:scale-[0.98] shadow-sm cursor-pointer"
+                      >
+                        <div className="h-8 w-8 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-green-600 group-hover:border-green-300">
+                           <Plus className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-semibold">Add New Stop</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )

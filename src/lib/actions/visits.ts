@@ -86,6 +86,7 @@ export async function createVisitAction(data: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     id: data.id as any, // Preserve offline temp ID if provided
     agent_id: user.id,
+    buyer_id: savedBuyer.id,
     buyer_name: data.buyer_name,
     buyer_type: data.buyer_type,
     activity_type: data.activity_type,
@@ -139,6 +140,7 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
   const { data: updatedVisit, error: visitError } = await supabase
     .from('visits')
     .update({
+      buyer_id: savedBuyer.id,
       status: 'completed',
       visit_details: data,
       check_in_location: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
@@ -241,6 +243,7 @@ export async function createBulkVisits(visits: {
 
       visitsToInsert.push({
         agent_id: user.id,
+        buyer_id: buyer.id,
         buyer_name: buyer.name,
         buyer_type: buyer.business_type || 'Unknown',
         activity_type: visit.activity_type,
@@ -308,6 +311,7 @@ export async function addBuyerToRouteAction(
   // 2. Insert visit
   const visitData: VisitInsert = {
     agent_id: user.id,
+    buyer_id: buyer.id,
     buyer_name: buyer.name,
     buyer_type: buyer.business_type || 'Unknown',
     activity_type: activityType,
@@ -399,6 +403,7 @@ export async function swapBuyerInRouteAction(
   const { error: visitError } = await supabase
     .from('visits')
     .update({
+      buyer_id: newBuyer.id,
       buyer_name: newBuyer.name,
       buyer_type: newBuyer.business_type || 'Unknown',
       activity_type: activityType,

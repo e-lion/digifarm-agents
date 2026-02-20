@@ -34,10 +34,23 @@ export async function getBuyers(
   const supabase = await createClient()
 
   try {
-    // 1. Fetch filtered and paginated buyers
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
+    // 1. Fetch buyers with their latest visits in a single relational query
+    // We use a nested select to grab the relevant visit data directly
     let query = supabase
       .from('buyers')
-      .select('*', { count: 'exact' })
+      .select(`
+        *,
+        visits(
+          status,
+          scheduled_date,
+          completed_at,
+          checked_in_at,
+          profiles(full_name, first_name, last_name, email)
+        )
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
     if (search) {
@@ -45,109 +58,74 @@ export async function getBuyers(
       query = query.or(`name.ilike.${searchPattern},contact_name.ilike.${searchPattern},county.ilike.${searchPattern},value_chain.ilike.${searchPattern}`)
     }
 
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-
-    const { data: buyers, count, error: buyersError } = await query.range(from, to)
+    const { data: buyersData, count, error: buyersError } = await query.range(from, to)
 
     if (buyersError) throw buyersError
 
-    // 2. Fetch visits ONLY for the fetched buyers to aggregate stats
-    const buyerNames = buyers.map(b => b.name)
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let visits: any[] = []
-    if (buyerNames.length > 0) {
-        const { data: visitsData, error: visitsError } = await supabase
-        .from('visits')
-        .select('buyer_name, agent_id, status, created_at, scheduled_date, completed_at, checked_in_at, profiles(full_name, first_name, last_name, email)')
-        .in('buyer_name', buyerNames)
-        .order('created_at', { ascending: false })
+    // 2. Map the relational data to the expected BuyerWithStats interface
+    // This approach is much more scalable than fetching all visits separately
+    const result: BuyerWithStats[] = (buyersData || []).map(buyer => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const buyerVisits = (buyer.visits as any[]) || []
+      
+      const agents = new Set<string>()
+      let lastVisit: string | null = null
+      let latestStatus: string | null = null
+      let latestAgent: string | null = null
+      let latestScheduled: string | null = null
+      let latestCompleted: string | null = null
+      let latestCheckedIn: string | null = null
 
-        if (visitsError) throw visitsError
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        visits = visitsData as any[]
-    }
+      // Sort visits by scheduled_date DESC to find the "latest" ones easily
+      const sortedVisits = [...buyerVisits].sort((a, b) => 
+        new Date(b.scheduled_date || 0).getTime() - new Date(a.scheduled_date || 0).getTime()
+      )
 
-    // 3. Aggregate stats
-    const buyerStats = new Map<string, { 
-      agents: Set<string>, 
-      lastVisit: string | null,
-      latestStatus: string | null,
-      latestAgent: string | null,
-      latestScheduled: string | null,
-      latestCompleted: string | null,
-      latestCheckedIn: string | null
-    }>()
+      sortedVisits.forEach((visit, index) => {
+        const profiles = Array.isArray(visit.profiles) ? visit.profiles[0] : visit.profiles
+        const agentName = profiles?.full_name 
+          ? profiles.full_name 
+          : profiles?.first_name 
+            ? `${profiles.first_name} ${profiles.last_name || ''}`.trim() 
+            : profiles?.email || 'Unknown Agent';
+        
+        agents.add(agentName)
 
-    visits.forEach(visit => {
-      if (!visit.buyer_name) return
-      
-      const normalizedName = visit.buyer_name.trim().toLowerCase()
-      const stats = buyerStats.get(normalizedName) || { 
-        agents: new Set(), 
-        lastVisit: null,
-        latestStatus: null,
-        latestAgent: null,
-        latestScheduled: null,
-        latestCompleted: null,
-        latestCheckedIn: null
-      }
-      
-      // Add agent name or email
-      const profiles = Array.isArray(visit.profiles) ? visit.profiles[0] : visit.profiles
-      const agentName = profiles?.full_name 
-        ? profiles.full_name 
-        : profiles?.first_name 
-          ? `${profiles.first_name} ${profiles.last_name || ''}`.trim() 
-          : profiles?.email || 'Unknown Agent';
-      stats.agents.add(agentName)
-      
-      // 1. Capture absolute latest visit info (planned or completed)
-      // Since visits are ordered by created_at DESC, the first visit we see for this buyer
-      // in the iteration will be the technically "latest" one record-wise.
-      if (!stats.latestStatus) {
-        stats.latestStatus = visit.status
-        stats.latestAgent = agentName
-        stats.latestScheduled = visit.scheduled_date
-      }
-      
-      // 2. Track the latest CHECKED-IN visit for the physical "Date Visited" date
-      // We prioritize checked_in_at, then completed_at if check-in was missed
-      const interactionTime = visit.checked_in_at || visit.completed_at
-      if (interactionTime) {
-        if (!stats.lastVisit || new Date(interactionTime) > new Date(stats.lastVisit)) {
-            stats.lastVisit = interactionTime
-            stats.latestCompleted = visit.completed_at
-            stats.latestCheckedIn = visit.checked_in_at
+        // The first visit in sorted list is the latest scheduled one
+        if (index === 0) {
+          latestStatus = visit.status
+          latestAgent = agentName
+          latestScheduled = visit.scheduled_date
         }
-      }
-      
-      buyerStats.set(normalizedName, stats)
-    })
 
-    // 4. Merge
-    const result: BuyerWithStats[] = buyers.map(buyer => {
-      const normalizedName = buyer.name?.trim().toLowerCase()
-      const stats = buyerStats.get(normalizedName) || { 
-        agents: new Set(), 
-        lastVisit: null,
-        latestStatus: null,
-        latestAgent: null,
-        latestScheduled: null,
-        latestCompleted: null,
-        latestCheckedIn: null
-      }
+        // Track the latest physical interaction (check-in or completion)
+        const interactionTime = visit.checked_in_at || visit.completed_at
+        if (interactionTime) {
+          if (!lastVisit || new Date(interactionTime) > new Date(lastVisit)) {
+            lastVisit = interactionTime
+            latestCompleted = visit.completed_at
+            latestCheckedIn = visit.checked_in_at
+          }
+        }
+      })
+
       return {
-        ...buyer,
-        agent_count: stats.agents.size,
-        agent_names: Array.from(stats.agents),
-        last_visited: stats.lastVisit,
-        latest_visit_status: stats.latestStatus,
-        latest_visit_agent_name: stats.latestAgent,
-        latest_visit_scheduled_date: stats.latestScheduled,
-        latest_visit_completed_at: stats.latestCompleted,
-        latest_visit_checked_in_at: stats.latestCheckedIn
+        id: buyer.id,
+        name: buyer.name,
+        contact_name: buyer.contact_name,
+        phone: buyer.phone,
+        value_chain: buyer.value_chain,
+        business_type: buyer.business_type,
+        county: buyer.county,
+        created_at: buyer.created_at,
+        agent_count: agents.size,
+        agent_names: Array.from(agents),
+        last_visited: lastVisit,
+        latest_visit_status: latestStatus,
+        latest_visit_agent_name: latestAgent,
+        latest_visit_scheduled_date: latestScheduled,
+        latest_visit_completed_at: latestCompleted,
+        latest_visit_checked_in_at: latestCheckedIn
       }
     })
 
