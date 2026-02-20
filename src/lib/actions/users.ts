@@ -28,7 +28,7 @@ export async function toggleAccess(email: string, currentStatus: 'activated' | '
     console.error('Note: Could not update profiles table (might be a pending user):', profileError)
   }
 
-  revalidatePath('/admin/agents')
+  revalidatePath('/admin/users')
 }
 
 export async function addAgent(formData: FormData) {
@@ -47,6 +47,6 @@ export async function addAgent(formData: FormData) {
     console.error('Failed to add agent:', error)
     throw new Error('Failed to add agent')
   } else {
-    revalidatePath('/admin/agents')
+    revalidatePath('/admin/users')
   }
 }

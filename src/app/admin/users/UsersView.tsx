@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { Plus, ShieldCheck, Clock, Mail, ChevronDown } from 'lucide-react'
+import { Plus, ShieldCheck, Clock, Mail, ChevronDown, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toggleAccess, addAgent } from '@/lib/actions/users'
 
 interface UnifiedUser {
@@ -17,15 +18,57 @@ interface UnifiedUser {
 
 interface UsersViewProps {
   unifiedUsers: UnifiedUser[]
+  totalCount: number
+  currentPage: number
+  currentQuery: string
 }
 
-export function UsersView({ unifiedUsers = [] }: UsersViewProps) {
+export function UsersView({ 
+  unifiedUsers = [], 
+  totalCount, 
+  currentPage, 
+  currentQuery 
+}: UsersViewProps) {
+  const router = useRouter()
   const [isAdding, setIsAdding] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [togglingEmail, setTogglingEmail] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState(currentQuery)
+
+  const handleToggle = (email: string, currentStatus: 'activated' | 'deactivated') => {
+    setTogglingEmail(email)
+    startTransition(async () => {
+        try {
+            await toggleAccess(email, currentStatus)
+        } catch (e) {
+            console.error(e)
+        } finally {
+            setTogglingEmail(null)
+        }
+    })
+  }
+
+  // Debounced search effect
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm !== currentQuery) {
+        router.push(`?page=1&query=${encodeURIComponent(searchTerm)}`)
+      }
+    }, 500)
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchTerm, currentQuery, router])
+
+  const totalPages = Math.ceil(totalCount / 10)
+
+  const handlePageChange = (newPage: number) => {
+    router.push(`?page=${newPage}&query=${encodeURIComponent(currentQuery)}`)
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-            <Card className="w-full md:w-[400px]">
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
+            <Card className="w-full lg:w-[400px] shrink-0">
                 <CardHeader className="pb-3">
                     <CardTitle className="text-lg">Add New User / Whitelist</CardTitle>
                 </CardHeader>
@@ -84,7 +127,7 @@ export function UsersView({ unifiedUsers = [] }: UsersViewProps) {
                                     ) : (
                                         <>
                                             <Plus className="h-4 w-4 mr-2" />
-                                            <span>Add User</span>
+                                            <span>Add</span>
                                         </>
                                     )}
                                 </Button>
@@ -93,9 +136,22 @@ export function UsersView({ unifiedUsers = [] }: UsersViewProps) {
                     </form>
                 </CardContent>
             </Card>
+
+            {/* Search Box */}
+            <Card className="flex-1 w-full self-stretch flex items-center px-4">
+                <div className="relative w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input 
+                        placeholder="Search by email..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 h-10 bg-gray-50/50 border-gray-200 focus:bg-white transition-colors"
+                    />
+                </div>
+            </Card>
         </div>
 
-        <Card>
+        <Card className="border-none shadow-sm bg-white overflow-hidden">
             <CardHeader>
                 <CardTitle>User Access Management</CardTitle>
             </CardHeader>
@@ -113,7 +169,7 @@ export function UsersView({ unifiedUsers = [] }: UsersViewProps) {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {unifiedUsers?.map((user, index) => (
-                                <tr key={user?.email || `user-${index}`} className="hover:bg-gray-50/50 transition-colors">
+                                <tr key={user?.email || `user-${index}`} className="hover:bg-gray-50/80 transition-colors">
                                     <td className="py-3 px-4">
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold text-gray-900">{user.fullName || 'Pending Registration'}</span>
@@ -145,10 +201,15 @@ export function UsersView({ unifiedUsers = [] }: UsersViewProps) {
                                         <Button 
                                             variant={user.status === 'activated' ? 'outline' : 'primary'}
                                             size="sm"
-                                            onClick={() => toggleAccess(user.email, user.status)}
+                                            onClick={() => handleToggle(user.email, user.status)}
+                                            disabled={isPending && togglingEmail === user.email}
                                             className={user.status === 'activated' ? 'text-red-600 border-red-200 hover:bg-red-50' : ''}
                                         >
-                                            {user.status === 'activated' ? 'Deactivate' : 'Activate'}
+                                            {isPending && togglingEmail === user.email ? (
+                                                <Clock className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                user.status === 'activated' ? 'Deactivate' : 'Activate'
+                                            )}
                                         </Button>
                                     </td>
                                 </tr>
@@ -163,6 +224,51 @@ export function UsersView({ unifiedUsers = [] }: UsersViewProps) {
                 </div>
             </CardContent>
         </Card>
+
+        {/* Pagination Controls */}
+        {totalCount > 0 && (
+          <div className="flex items-center justify-between bg-white px-4 py-3 sm:px-6 rounded-lg border shadow-sm">
+            <div className="flex flex-1 items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Page <span className="font-medium">{currentPage}</span> of{' '}
+                  <span className="font-medium">{Math.max(1, totalPages)}</span>
+                  <span className="ml-2 text-gray-400">
+                    | Showing <span className="font-medium">{(currentPage - 1) * 10 + 1}</span> to{' '}
+                    <span className="font-medium">{Math.min(currentPage * 10, totalCount)}</span> of{' '}
+                    <span className="font-medium">{totalCount}</span>
+                  </span>
+                </p>
+              </div>
+              {totalPages > 1 && (
+                <div>
+                  <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="rounded-l-md px-2 focus:z-20 h-9"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Previous</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="rounded-r-md px-2 focus:z-20 h-9"
+                    >
+                      <span className="sr-only">Next</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </nav>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
     </div>
   )
 }

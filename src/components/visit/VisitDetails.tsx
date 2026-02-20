@@ -1,3 +1,5 @@
+'use client'
+
 import VisitForm from '@/components/forms/VisitForm'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -5,7 +7,7 @@ import { getCachedPlannedVisit, getOfflineNewVisits } from '@/lib/offline-storag
 import { Loader2 } from 'lucide-react'
 import { getContactDesignations, getBuyerContacts } from '@/lib/actions/buyers'
 
-export function VisitDetails({ id }: { id: string }) {
+export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: boolean }) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [visit, setVisit] = useState<any>(null)
@@ -201,6 +203,7 @@ export function VisitDetails({ id }: { id: string }) {
         isLocal={visit.isLocal}
         contactDesignations={designations}
         existingContacts={contacts}
+        isAdmin={isAdmin}
       />
     </>
   )

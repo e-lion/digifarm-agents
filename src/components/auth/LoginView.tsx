@@ -27,8 +27,14 @@ export function LoginView({ error }: { error?: string | null }) {
         </div>
 
         {error === 'UnauthorizedAccess' && (
-          <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg text-center">
+          <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg text-center font-medium">
             Access Denied. Your email is not whitelisted.
+          </div>
+        )}
+
+        {error === 'DeactivatedAccount' && (
+          <div className="p-4 text-sm text-amber-700 bg-amber-50 rounded-lg text-center border border-amber-100 font-medium">
+            Your account has been deactivated. Please contact an administrator.
           </div>
         )}
 

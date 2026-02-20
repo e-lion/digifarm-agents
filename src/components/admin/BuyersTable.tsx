@@ -230,51 +230,60 @@ export default function BuyersTable({
           </table>
         </div>
         
-        {/* Pagination & Page Size */}
-        {totalCount > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/30 gap-4">
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalCount)}</span> of <span className="font-medium">{totalCount}</span></span>
-              
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">|</span>
-                <span className="text-gray-500">Rows per page:</span>
-                <select 
-                    value={itemsPerPage}
-                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                    className="h-8 w-16 rounded border-gray-200 text-base focus:ring-green-500 focus:border-green-500"
-                >
-                    <option value={8}>8</option>
-                    <option value={16}>16</option>
-                    <option value={32}>32</option>
-                    <option value={64}>64</option>
-                </select>
-              </div>
-            </div>
+      </Card>
 
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8 p-0"
+      {/* Pagination & Page Size */}
+      {totalCount > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 rounded-lg border shadow-sm bg-white gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-sm text-gray-700">
+            <p>
+              Page <span className="font-medium">{currentPage}</span> of{' '}
+              <span className="font-medium">{Math.max(1, totalPages)}</span>
+              <span className="ml-2 text-gray-400">
+                | Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalCount)}</span> of{' '}
+                <span className="font-medium">{totalCount}</span>
+              </span>
+            </p>
+            
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline text-gray-300">|</span>
+              <span className="text-gray-500">Rows per page:</span>
+              <select 
+                  value={itemsPerPage}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  className="h-8 w-16 rounded border-gray-200 text-sm focus:ring-green-500 focus:border-green-500 bg-transparent"
               >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+                  <option value={8}>8</option>
+                  <option value={16}>16</option>
+                  <option value={32}>32</option>
+                  <option value={64}>64</option>
+              </select>
             </div>
           </div>
-        )}
-      </Card>
+
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="h-9 w-9 p-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="h-9 w-9 p-0"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

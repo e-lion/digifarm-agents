@@ -434,3 +434,70 @@ export async function swapBuyerInRouteAction(
   revalidatePath('/admin/buyers')
   return { success: true }
 }
+export async function getVisits(page: number, pageSize: number, filters: {
+  query?: string,
+  status?: string,
+  agentId?: string,
+  category?: string,
+  startDate?: string,
+  endDate?: string
+}) {
+  const supabase = await createClient()
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let supabaseQuery = supabase
+    .from('visits')
+    .select(`
+      *,
+      agent:profiles!visits_agent_id_fkey (
+        full_name,
+        email
+      )
+    `, { count: 'exact' })
+
+  if (filters.status && filters.status !== 'all') {
+    supabaseQuery = supabaseQuery.eq('status', filters.status)
+  }
+
+  if (filters.agentId && filters.agentId !== 'all') {
+    supabaseQuery = supabaseQuery.eq('agent_id', filters.agentId)
+  }
+
+  if (filters.category && filters.category !== 'all') {
+    supabaseQuery = supabaseQuery.eq('visit_category', filters.category)
+  }
+
+  if (filters.startDate) {
+    supabaseQuery = supabaseQuery.gte('scheduled_date', filters.startDate)
+  }
+
+  if (filters.endDate) {
+    supabaseQuery = supabaseQuery.lte('scheduled_date', `${filters.endDate}T23:59:59Z`)
+  }
+
+  if (filters.query) {
+    supabaseQuery = supabaseQuery.ilike('buyer_name', `%${filters.query}%`)
+  }
+
+  const { data, count, error } = await supabaseQuery
+    .order('scheduled_date', { ascending: false })
+    .range(from, to)
+
+  if (error) throw error
+
+  const visits = (data || []).map(v => {
+    const agent = v.agent as unknown as { full_name: string | null, email: string } | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const details = v.visit_details as any
+    return {
+      ...v,
+      agent_name: agent?.full_name || 'Unknown Agent',
+      agent_email: agent?.email || 'Unknown Email',
+      actual_date: v.checked_in_at,
+      feedback: details?.buyer_feedback || null
+    }
+  })
+
+  return { visits, count: count || 0 }
+}

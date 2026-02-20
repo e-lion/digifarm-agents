@@ -58,19 +58,7 @@ const DynamicMap = dynamic(() => import('@/components/map/Map'), {
   ssr: false 
 })
 
-export default function VisitForm({ 
-  visitId, 
-  buyerId, 
-  buyerName, 
-  buyerType,
-  targetPolygon,
-  initialData,
-  status,
-  checkInLocation,
-  isLocal,
-  contactDesignations = [],
-  existingContacts = []
-}: { 
+export default function VisitForm(props: { 
   visitId: string, 
   buyerId?: string,
   buyerName: string, 
@@ -85,9 +73,25 @@ export default function VisitForm({
   isLocal?: boolean,
   contactDesignations?: string[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  existingContacts?: any[]
+  existingContacts?: any[],
+  isAdmin?: boolean
 }) {
-  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null)
+  const {
+    visitId,
+    buyerId,
+    buyerName,
+    buyerType,
+    targetPolygon,
+    initialData,
+    status,
+    checkInLocation,
+    isLocal,
+    contactDesignations = [],
+    existingContacts = [],
+    isAdmin = false
+  } = props;
+
+  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(isAdmin ? true : null)
   const [locationChecking, setLocationChecking] = useState(false)
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -221,8 +225,8 @@ export default function VisitForm({
       }
   }
 
-  // If completed, show summary
-  if (status === 'completed' && initialData) {
+  // If completed (or isAdmin), show summary
+  if ((status === 'completed' || isAdmin) && initialData) {
     const summaryPolygons = targetPolygon ? [{
       id: 'target',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -241,12 +245,20 @@ export default function VisitForm({
 
     return (
       <div className="space-y-6">
-        <Card className="bg-green-50 border-green-200">
+        <Card className={`${isAdmin ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
            <CardContent className="pt-6 flex items-center gap-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              {isAdmin ? (
+                 <AlertCircle className="h-8 w-8 text-blue-600" />
+              ) : (
+                 <CheckCircle className="h-8 w-8 text-green-600" />
+              )}
               <div>
-                <h3 className="font-bold text-green-800">Visit Completed</h3>
-                <p className="text-sm text-green-700">This visit report has been submitted.</p>
+                <h3 className={`font-bold ${isAdmin ? 'text-blue-800' : 'text-green-800'}`}>
+                  {isAdmin ? 'Admin Review Mode' : 'Visit Completed'}
+                </h3>
+                <p className={`text-sm ${isAdmin ? 'text-blue-700' : 'text-green-700'}`}>
+                  {isAdmin ? 'You are viewing this visit report in read-only mode.' : 'This visit report has been submitted.'}
+                </p>
               </div>
            </CardContent>
         </Card>
@@ -285,11 +297,11 @@ export default function VisitForm({
              <div className="grid grid-cols-2 gap-4">
                 <div>
                    <label className="text-xs text-gray-500 uppercase">Contact</label>
-                   <p className="font-medium">{initialData.contact_name}</p>
+                   <p className="font-medium">{initialData.contact_name || '-'}</p>
                 </div>
                 <div>
                    <label className="text-xs text-gray-500 uppercase">Phone</label>
-                   <p className="font-medium">{initialData.phone}</p>
+                   <p className="font-medium">{initialData.phone || '-'}</p>
                 </div>
                  <div>
                    <label className="text-xs text-gray-500 uppercase">Designation</label>
@@ -297,7 +309,7 @@ export default function VisitForm({
                 </div>
                 <div>
                    <label className="text-xs text-gray-500 uppercase">Farmers</label>
-                   <p className="font-medium">{initialData.active_farmers}</p>
+                   <p className="font-medium">{initialData.active_farmers ?? '-'}</p>
                 </div>
                 <div>
                    <label className="text-xs text-gray-500 uppercase">Potential Customer</label>
@@ -319,8 +331,8 @@ export default function VisitForm({
         </Card>
         
         <div className="flex justify-center">
-            <Button variant="secondary" onClick={() => router.push('/agent/routes')}>
-                Back to Routes
+            <Button variant="secondary" onClick={() => router.push(isAdmin ? '/admin/visits' : '/agent/routes')}>
+                {isAdmin ? 'Back to Visits' : 'Back to Routes'}
             </Button>
         </div>
       </div>
