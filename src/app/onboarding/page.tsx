@@ -1,7 +1,9 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { submitOnboarding } from './actions'
+import { MultiSelect } from '@/components/ui/MultiSelect'
+import { kenyaCounties } from '@/lib/constants/counties'
 
 const initialState = {
   error: '',
@@ -9,6 +11,7 @@ const initialState = {
 
 export default function OnboardingPage() {
   const [state, formAction, isPending] = useActionState(submitOnboarding, initialState)
+  const [selectedCounties, setSelectedCounties] = useState<string[]>([])
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -35,6 +38,9 @@ export default function OnboardingPage() {
                 </div>
               </div>
             )}
+
+            <input type="hidden" name="counties" value={JSON.stringify(selectedCounties)} />
+
             <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
                 First Name
@@ -78,6 +84,19 @@ export default function OnboardingPage() {
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Operating Counties
+              </label>
+              <MultiSelect
+                options={kenyaCounties}
+                selected={selectedCounties}
+                onChange={setSelectedCounties}
+                placeholder="Select counties..."
+              />
+              <p className="mt-1 text-xs text-gray-500">Select the counties where you will be operating.</p>
             </div>
 
             <div>

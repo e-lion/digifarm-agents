@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { LayoutDashboard, Users, Map as MapIcon, LogOut, ShoppingBag } from 'lucide-react'
+import { LayoutDashboard, Users, Map as MapIcon, LogOut, ShoppingBag, Activity, ShieldCheck } from 'lucide-react'
 import { AdminMobileNav } from './AdminMobileNav'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +28,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/agents" className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors">
             <Users className="h-5 w-5" />
             Agents
+          </Link>
+          <Link href="/admin/users" className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors">
+            <ShieldCheck className="h-5 w-5" />
+            Users
+          </Link>
+          <Link href="/admin/analytics" className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors">
+            <Activity className="h-5 w-5" />
+            Analytics
           </Link>
           <Link href="/admin/buyers" className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors">
             <ShoppingBag className="h-5 w-5" />

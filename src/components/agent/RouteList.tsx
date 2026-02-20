@@ -16,6 +16,7 @@ import { RouteEditDialog } from './routes/RouteEditDialog'
 const PAGE_SIZE = 10
 
 export function RouteList({ userId }: { userId: string }) {
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming')
   const [statusFilter, setStatusFilter] = useState<'all' | 'planned' | 'completed'>('all')
   const [dateFilter, setDateFilter] = useState('')
   const [offlineIds, setOfflineIds] = useState<string[]>([])
@@ -33,13 +34,29 @@ export function RouteList({ userId }: { userId: string }) {
   const supabase = createClient()
 
   const fetchVisits = async ({ pageParam = 0 }) => {
+    // Get today's date string in YYYY-MM-DD for accurate comparison (local time)
+    const today = new Date()
+    // adjust for local timezone offset
+    const offset = today.getTimezoneOffset()
+    const localToday = new Date(today.getTime() - (offset*60*1000))
+    const todayString = localToday.toISOString().split('T')[0]
+
     let query = supabase
       .from('visits')
       .select('*')
       .eq('agent_id', userId)
       .order('status', { ascending: false })
-      .order('scheduled_date', { ascending: false })
       .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1)
+
+    if (activeTab === 'upcoming') {
+       query = query.gte('scheduled_date', todayString)
+       // Upcoming -> Today is at the top, tomorrow is below it
+       query = query.order('scheduled_date', { ascending: true })
+    } else {
+       query = query.lt('scheduled_date', todayString)
+       // History -> Yesterday is at the top, last week is below it
+       query = query.order('scheduled_date', { ascending: false })
+    }
 
     if (statusFilter !== 'all') {
       query = query.eq('status', statusFilter)
@@ -61,7 +78,7 @@ export function RouteList({ userId }: { userId: string }) {
     isFetchingNextPage,
     status
   } = useInfiniteQuery({
-    queryKey: ['visits', userId, statusFilter, dateFilter],
+    queryKey: ['visits', userId, activeTab, statusFilter, dateFilter],
     queryFn: fetchVisits,
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
@@ -135,9 +152,18 @@ export function RouteList({ userId }: { userId: string }) {
     if (!acc[date]) acc[date] = []
     acc[date].push(visit)
     return acc
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }, {} as Record<string, any[]>)
 
-  const sortedDates = Object.keys(groupedVisits).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+  const sortedDates = Object.keys(groupedVisits).sort((a, b) => {
+     if (activeTab === 'upcoming') {
+         // ascending
+         return new Date(a).getTime() - new Date(b).getTime()
+     } else {
+         // descending
+         return new Date(b).getTime() - new Date(a).getTime()
+     }
+  })
 
   const handleAddStop = (date: string) => {
     setEditMode('add')
@@ -145,6 +171,7 @@ export function RouteList({ userId }: { userId: string }) {
     setEditDialogOpen(true)
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSwapStop = (e: React.MouseEvent, visit: any) => {
     e.preventDefault()
     e.stopPropagation()
@@ -157,8 +184,35 @@ export function RouteList({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-6">
+      
+      {/* Tabs / Segment Control */}
+      <div className="flex p-1 bg-gray-100 rounded-xl">
+         <button
+            onClick={() => setActiveTab('upcoming')}
+            className={cn(
+              "flex-1 py-2 text-sm font-semibold rounded-lg transition-all",
+              activeTab === 'upcoming' 
+                ? "bg-white text-gray-900 shadow-sm" 
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50/50"
+            )}
+         >
+            Upcoming
+         </button>
+         <button
+            onClick={() => setActiveTab('history')}
+            className={cn(
+              "flex-1 py-2 text-sm font-semibold rounded-lg transition-all",
+              activeTab === 'history' 
+                ? "bg-white text-gray-900 shadow-sm" 
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50/50"
+            )}
+         >
+            History
+         </button>
+      </div>
+
       {/* Filters Section */}
-      <div className="sticky top-[53px] z-30 bg-gray-50/95 backdrop-blur-sm -mx-4 px-4 py-2 mb-4">
+      <div className="sticky top-[53px] z-30 bg-gray-50/95 backdrop-blur-sm -mx-4 px-4 py-2 mb-4 mt-0">
         <Card className="bg-white shadow-md border-gray-100">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
@@ -250,16 +304,6 @@ export function RouteList({ userId }: { userId: string }) {
                       <Calendar className="h-5 w-5 text-green-600" />
                       {displayDate}
                     </h2>
-                    {/* Add Stop Button only if filtering isn't completely overriding the context of a day */}
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => handleAddStop(date)}
-                      className="text-green-700 bg-green-50 border-green-200 hover:bg-green-100 hover:text-green-800"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Stop
-                    </Button>
                   </div>
 
                   <div className="space-y-4">
@@ -282,16 +326,6 @@ export function RouteList({ userId }: { userId: string }) {
                             <div className="space-y-2">
                               <h3 className="font-bold text-gray-900 text-lg leading-tight flex items-center gap-2">
                                 {visit.buyer_name}
-                                {!isDraft && visit.status !== 'completed' && (
-                                   <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      className="h-6 px-2 text-[10px] bg-gray-100 hover:bg-orange-100 border-none bg-transparent hover:text-orange-700 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={(e) => handleSwapStop(e, visit)}
-                                   >
-                                     <RefreshCw className="h-3 w-3 mr-1" /> Swap
-                                   </Button>
-                                )}
                               </h3>
                               <div className="flex flex-wrap items-center text-sm text-gray-500 gap-x-4 gap-y-1">
                                 {offlineIds.includes(visit.id) ? (
@@ -319,14 +353,38 @@ export function RouteList({ userId }: { userId: string }) {
                               </div>
                             </div>
                             
-                            <Button size="sm" variant="outline" className="h-10 w-10 p-0 rounded-full border-gray-200 group-hover:border-green-200 group-hover:bg-green-50 z-10">
-                              <ArrowRight className="h-5 w-5 text-green-600" />
-                            </Button>
+                            <div className="flex items-center gap-2 relative z-20">
+                                {!isDraft && visit.status !== 'completed' && (
+                                   <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      title="Swap Visit"
+                                      className="h-10 w-10 p-0 rounded-full border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-600 hover:text-orange-700 shadow-sm transition-colors"
+                                      onClick={(e) => handleSwapStop(e, visit)}
+                                   >
+                                     <RefreshCw className="h-5 w-5" />
+                                   </Button>
+                                )}
+                                <Button size="sm" variant="outline" className="h-10 w-10 p-0 rounded-full border-gray-200 group-hover:border-green-200 group-hover:bg-green-50 shadow-sm transition-colors cursor-pointer pointer-events-auto">
+                                  <ArrowRight className="h-5 w-5 text-green-600" />
+                                </Button>
+                            </div>
                           </CardContent>
                         </Card>
                       </Link>
                     )
                   })}
+                  
+                    {/* Add Stop Append Card */}
+                    <button 
+                      onClick={() => handleAddStop(date)}
+                      className="w-full mt-2 flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 hover:border-green-300 hover:bg-green-50 transition-all text-gray-500 hover:text-green-700 active:scale-[0.98] shadow-sm cursor-pointer"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-white border border-gray-200 flex items-center justify-center mb-2 shadow-sm text-gray-400 group-hover:text-green-600 group-hover:border-green-300">
+                         <Plus className="h-4 w-4" />
+                      </div>
+                      <span className="text-sm font-semibold">Add New Stop</span>
+                    </button>
                   </div>
                 </div>
               )

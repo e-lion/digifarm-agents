@@ -28,36 +28,29 @@ export default async function AgentsPage({
   // Filter for performance view (allows 'agent' AND null roles)
   const agentProfiles = allProfiles.filter(p => p.role !== 'admin')
 
-  // Fetch whitelisted emails (source of truth for access)
-  const { data: accessList } = await supabase
-    .from('profile_access')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  const accessEntries = accessList || []
-
+  console.log('DEBUG: allProfilesData count:', allProfilesData?.length || 0)
   // Calculate metrics for the selected date range
-  const agentsWithMetrics = agentProfiles.map(agent => {
+  const agentsWithMetrics = Array.isArray(agentProfiles) ? agentProfiles.map(agent => {
     // Filter visits for the selected date range
-    const visits = agent.visits || []
+    const visits = Array.isArray(agent?.visits) ? agent.visits : []
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dailyVisits = visits.filter((v: any) => {
-        if (!v.scheduled_date) return false
+        if (!v?.scheduled_date) return false
         try {
             const visitDate = new Date(v.scheduled_date).toISOString().split('T')[0]
             return visitDate >= startDate && visitDate <= endDate
         } catch (e) {
-            console.error('Error parsing date for visit:', v.id, e)
+            console.error('Error parsing date for visit:', v?.id, e)
             return false
         }
     })
 
     const totalVisits = dailyVisits.length
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const completedVisits = dailyVisits.filter((v: any) => v.status === 'completed').length
+    const completedVisits = dailyVisits.filter((v: any) => v?.status === 'completed').length
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const verifiedVisits = dailyVisits.filter((v: any) => v.status === 'completed' && v.check_in_location).length
+    const verifiedVisits = dailyVisits.filter((v: any) => v?.status === 'completed' && v?.check_in_location).length
     const completionRate = totalVisits > 0 ? Math.round((completedVisits / totalVisits) * 100) : 0
     
     return {
@@ -68,19 +61,9 @@ export default async function AgentsPage({
       completionRate,
       visits: dailyVisits
     }
-  })
+  }) : []
 
-  // Create unified users list for Access Control
-  const unifiedUsers = accessEntries.map(access => {
-    const profile = allProfiles.find(p => p.email === access.email)
-    return {
-      email: access.email,
-      role: access.role,
-      status: access.status || 'activated',
-      fullName: profile?.full_name || null,
-      isRegistered: !!profile,
-    }
-  })
+  console.log('DEBUG: Final agentsWithMetrics count:', agentsWithMetrics?.length || 0)
 
   return (
     <AdminLayout>
@@ -92,8 +75,7 @@ export default async function AgentsPage({
       </div>
 
       <AgentsView 
-        agentsWithMetrics={agentsWithMetrics} 
-        unifiedUsers={unifiedUsers}
+        agentsWithMetrics={agentsWithMetrics || []} 
         startDate={startDate}
         endDate={endDate}
       />

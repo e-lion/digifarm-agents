@@ -19,9 +19,17 @@ export async function submitOnboarding(prevState: any, formData: FormData) {
   const firstName = formData.get('firstName') as string
   const lastName = formData.get('lastName') as string
   const phoneNumber = formData.get('phoneNumber') as string
+  const countiesStr = formData.get('counties') as string
 
   if (!firstName || !lastName || !phoneNumber) {
     return { error: 'All fields are required' }
+  }
+
+  let counties = []
+  try {
+    counties = countiesStr ? JSON.parse(countiesStr) : []
+  } catch (e) {
+    console.error('Failed to parse counties:', e)
   }
 
   const { error } = await supabase
@@ -31,6 +39,7 @@ export async function submitOnboarding(prevState: any, formData: FormData) {
       last_name: lastName,
       phone_number: phoneNumber,
       full_name: `${firstName} ${lastName}`,
+      counties: counties,
     })
     .eq('id', user.id)
 

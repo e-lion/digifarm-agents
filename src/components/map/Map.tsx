@@ -1,6 +1,6 @@
 'use client'
 
-import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { useEffect, useState } from 'react'
@@ -27,6 +27,7 @@ interface MapProps {
   center?: [number, number]
   zoom?: number
   polygons?: { id: string; coords: [number, number][]; color?: string; name?: string }[]
+  polylines?: { id: string; coords: [number, number][]; color?: string; name?: string }[]
   markers?: { id: string; position: [number, number]; popup?: string }[]
   className?: string
   hideLocate?: boolean
@@ -157,6 +158,7 @@ export default function Map({
   center = [-1.2921, 36.8219], 
   zoom = 13, 
   polygons = [], 
+  polylines = [],
   markers = [], 
   className,
   hideLocate = false,
@@ -182,6 +184,11 @@ export default function Map({
         <Polygon key={poly.id} positions={poly.coords} pathOptions={{ color: poly.color || 'blue' }}>
            {poly.name && <Popup>{poly.name}</Popup>}
         </Polygon>
+      ))}
+      {polylines.map((line) => (
+        <Polyline key={line.id} positions={line.coords} pathOptions={{ color: line.color || 'blue', weight: 4, dashArray: '5, 10' }}>
+           {line.name && <Popup>{line.name}</Popup>}
+        </Polyline>
       ))}
       {markers.map((marker) => (
         <Marker key={marker.id} position={marker.position}>
