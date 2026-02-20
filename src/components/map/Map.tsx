@@ -1,6 +1,6 @@
 'use client'
 
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { useEffect, useState } from 'react'
@@ -29,6 +29,7 @@ interface MapProps {
   polygons?: { id: string; coords: [number, number][]; color?: string; name?: string }[]
   polylines?: { id: string; coords: [number, number][]; color?: string; name?: string }[]
   markers?: { id: string; position: [number, number]; popup?: string }[]
+  circles?: { id: string; center: [number, number]; radius: number; color?: string; name?: string }[]
   className?: string
   hideLocate?: boolean
   bounds?: [number, number][] | null
@@ -163,7 +164,8 @@ export default function Map({
   className,
   hideLocate = false,
   bounds,
-  autoLocate = false
+  autoLocate = false,
+  circles = []
 }: MapProps) {
   return (
     <MapContainer 
@@ -194,6 +196,16 @@ export default function Map({
         <Marker key={marker.id} position={marker.position}>
           {marker.popup && <Popup>{marker.popup}</Popup>}
         </Marker>
+      ))}
+      {circles.map((circle) => (
+        <Circle 
+          key={circle.id} 
+          center={circle.center} 
+          radius={circle.radius} 
+          pathOptions={{ color: circle.color || 'blue', fillColor: circle.color || 'blue', fillOpacity: 0.1 }}
+        >
+          {circle.name && <Popup>{circle.name}</Popup>}
+        </Circle>
       ))}
     </MapContainer>
   )

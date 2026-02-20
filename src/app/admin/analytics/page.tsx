@@ -31,7 +31,7 @@ export default async function AnalyticsPage({
   // Fetch visits for the selected date range
   const { data: visitsData } = await supabase
     .from('visits')
-    .select('*')
+    .select('*, buyers(location_lat, location_lng)')
     .gte('scheduled_date', startDate)
     .lte('scheduled_date', endDate)
 

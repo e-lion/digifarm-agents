@@ -13,9 +13,8 @@ import { Input } from '@/components/ui/Input'
 import { PhoneInput, isValidPhoneNumber } from '@/components/ui/PhoneInput'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { MapPin, CheckCircle, XCircle, WifiOff, AlertCircle } from 'lucide-react'
-import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 import distance from '@turf/distance'
-import { point, polygon } from '@turf/helpers'
+import { point } from '@turf/helpers'
 import { updateVisitAction, recordCheckInAction } from '@/lib/actions/visits'
 import { updateBuyerLocation } from '@/lib/actions/buyers'
 
@@ -64,7 +63,7 @@ export default function VisitForm(props: {
   buyerName: string, 
   buyerType?: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetPolygon: any,
+  buyerLocation?: { lat: number, lng: number } | null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialData?: any,
   status?: string,
@@ -81,7 +80,7 @@ export default function VisitForm(props: {
     buyerId,
     buyerName,
     buyerType,
-    targetPolygon,
+    buyerLocation,
     initialData,
     status,
     checkInLocation,
@@ -97,14 +96,14 @@ export default function VisitForm(props: {
   const [error, setError] = useState<string | null>(null)
   const [isOfflineSaved, setIsOfflineSaved] = useState(false)
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false)
-  const [mapBounds, setMapBounds] = useState<[number, number][] | null>(null)
   const [distanceToTarget, setDistanceToTarget] = useState<number | null>(null)
   const [showNoLocationPrompt, setShowNoLocationPrompt] = useState(false)
   const [selectedContactId, setSelectedContactId] = useState<string>('new')
+  const [mapBounds, setMapBounds] = useState<[number, number][] | null>(null)
   const router = useRouter()
 
 
-  // ... (parsePoint, savedCoords, getPolygonCenter, mapPolygons, mapMarkers helpers) ...
+  // ... (parsePoint, savedCoords, mapMarkers, mapCircles helpers) ...
   // Helper to parse check_in_location from Supabase (can be WKT string or GeoJSON object)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsePoint = (pt: any) => {
@@ -163,26 +162,13 @@ export default function VisitForm(props: {
 
   const savedCoords = parsePoint(checkInLocation)
 
-  // Helper to get center of polygon for map default view
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getPolygonCenter = (poly: any): [number, number] => {
-    try {
-      const coords = poly.coordinates?.[0] || poly[0]
-      if (coords && coords.length > 0) {
-        // Return first point as a fallback center
-        return [coords[0][1], coords[0][0]]
-      }
-    } catch {}
-    return [-1.2921, 36.8219] // Nairobi fallback
-  }
-
-  // Helper to format polygon for our Map component
-  const mapPolygons = targetPolygon ? [{
-    id: 'target',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    coords: targetPolygon.coordinates?.[0]?.map((c: any) => [c[1], c[0]]) || targetPolygon[0]?.map((c: any) => [c[1], c[0]]),
-    color: isWithinRange === true ? '#16a34a' : '#dc2626',
-    name: 'Designated Area'
+  // Helper for check-in circle (100m radius)
+  const mapCircles = buyerLocation ? [{
+    id: 'geofence',
+    center: [buyerLocation.lat, buyerLocation.lng] as [number, number],
+    radius: 100, // 100 meters
+    color: isWithinRange === true ? '#16a34a' : '#2563eb', // green if in range, blue default
+    name: 'Check-in Area (100m)'
   }] : []
 
   // Helper for agent marker
@@ -227,12 +213,12 @@ export default function VisitForm(props: {
 
   // If completed (or isAdmin), show summary
   if ((status === 'completed' || isAdmin) && initialData) {
-    const summaryPolygons = targetPolygon ? [{
-      id: 'target',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      coords: targetPolygon.coordinates?.[0]?.map((c: any) => [c[1], c[0]]) || targetPolygon[0]?.map((c: any) => [c[1], c[0]]),
+    const summaryCircles = buyerLocation ? [{
+      id: 'geofence',
+      center: [buyerLocation.lat, buyerLocation.lng] as [number, number],
+      radius: 100,
       color: '#16a34a',
-      name: 'Designated Area'
+      name: 'Check-in Area'
     }] : []
 
     const summaryMarkers = savedCoords ? [{
@@ -241,7 +227,7 @@ export default function VisitForm(props: {
       popup: 'Check-in Location'
     }] : []
 
-    const centerPoint = savedCoords ? [savedCoords.lat, savedCoords.lng] : getPolygonCenter(targetPolygon)
+    const centerPoint = savedCoords ? [savedCoords.lat, savedCoords.lng] : (buyerLocation ? [buyerLocation.lat, buyerLocation.lng] : [-1.2921, 36.8219])
 
     return (
       <div className="space-y-6">
@@ -272,7 +258,7 @@ export default function VisitForm(props: {
                 <DynamicMap 
                   center={centerPoint as [number, number]}
                   zoom={17}
-                  polygons={summaryPolygons}
+                  circles={summaryCircles}
                   markers={summaryMarkers}
                   hideLocate={true}
                 />
@@ -415,40 +401,37 @@ export default function VisitForm(props: {
       
       // Calculate bounds for map to show both agent and target
       const points: [number, number][] = [[latitude, longitude]]
-      if (mapPolygons.length > 0) {
-        points.push(...mapPolygons[0].coords)
+      if (buyerLocation) {
+        points.push([buyerLocation.lat, buyerLocation.lng])
       }
       if (points.length > 1) {
         setMapBounds(points)
       }
       
       
-      if (!targetPolygon) {
+      if (!buyerLocation) {
         setShowNoLocationPrompt(true)
         setLocationChecking(false)
         return
       }
 
       try {
-        const pt = point([longitude, latitude])
-        const polyData = targetPolygon.coordinates || targetPolygon
-        const poly = polygon(polyData)
-        const isInside = booleanPointInPolygon(pt, poly)
+        const from = point([longitude, latitude])
+        const to = point([buyerLocation.lng, buyerLocation.lat])
+        
+        // Calculate distance in kilometers
+        const dist = distance(from, to, { units: 'kilometers' })
+        setDistanceToTarget(dist)
+        
+        const isInside = dist <= 0.1 // 100 meters
         setIsWithinRange(isInside)
         
         if (isInside) {
-          setDistanceToTarget(0)
           if (navigator.onLine && !isLocal) {
             recordCheckInAction(visitId, { lat: latitude, lng: longitude })
           } else {
              toast.info("Working offline. Location verified locally.")
           }
-        } else {
-          // Calculate distance to center for UI feedback
-          const [centerLng, centerLat] = getPolygonCenter(targetPolygon).reverse()
-          const centerPt = point([centerLng, centerLat])
-          const dist = distance(pt, centerPt, { units: 'kilometers' })
-          setDistanceToTarget(dist)
         }
       } catch (e) {
         console.error("Geo check error", e)
@@ -564,16 +547,15 @@ export default function VisitForm(props: {
           {/* Visual Map context */}
           <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-100 shadow-inner relative group">
             <DynamicMap 
-              center={coords ? [coords.lat, coords.lng] : getPolygonCenter(targetPolygon)}
-              zoom={coords || targetPolygon ? 16 : 13}
-              polygons={mapPolygons}
+              center={coords ? [coords.lat, coords.lng] : (buyerLocation ? [buyerLocation.lat, buyerLocation.lng] : [-1.2921, 36.8219])}
+              zoom={coords || buyerLocation ? 16 : 13}
+              circles={mapCircles}
               markers={mapMarkers}
               bounds={mapBounds}
             />
             {!coords && (
               <div className="absolute inset-0 bg-black/5 flex items-center justify-center backdrop-blur-[1px]">
                 <p className="text-xs font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full shadow-sm">
-                  Waiting for location...
                 </p>
               </div>
             )}

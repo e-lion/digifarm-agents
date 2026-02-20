@@ -196,52 +196,10 @@ export async function getBuyersList(
       }
   }
 
-  // 3. Fetch latest visit location for buyers MISSING location
-  const buyersWithoutLocation = buyers.filter(b => !b.location_lat || !b.location_lng)
-  const buyerNamesToCheck = buyersWithoutLocation.map(b => b.name)
-  const derivedLocations = new Map<string, { lat: number, lng: number }>()
-  
-  if (buyerNamesToCheck.length > 0) {
-     const { data: visits } = await supabase
-        .from('visits')
-        .select('buyer_name, polygon_coords')
-        .in('buyer_name', buyerNamesToCheck)
-        .not('polygon_coords', 'is', null)
-        .order('created_at', { ascending: false })
-     
-     if (visits) {
-        visits.forEach(visit => {
-            if (!derivedLocations.has(visit.buyer_name) && visit.polygon_coords) {
-                try {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const coords = (visit.polygon_coords as any).coordinates[0]; 
-                    if (coords && coords.length > 0) {
-                        let latSum = 0, lngSum = 0;
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        coords.forEach((c: any) => {
-                            lngSum += c[0];
-                            latSum += c[1];
-                        });
-                        derivedLocations.set(visit.buyer_name, { 
-                            lat: latSum / coords.length, 
-                            lng: lngSum / coords.length 
-                        });
-                    }
-                } catch (e) {
-                    console.warn(`Failed to parse location for ${visit.buyer_name}`, e);
-                }
-            }
-        })
-     }
-  }
-  
   const mappedBuyers = buyers.map(buyer => {
-      let location = null
-      if (buyer.location_lat && buyer.location_lng) {
-          location = { lat: buyer.location_lat, lng: buyer.location_lng }
-      } else {
-          location = derivedLocations.get(buyer.name) || null
-      }
+      const location = buyer.location_lat && buyer.location_lng 
+          ? { lat: buyer.location_lat, lng: buyer.location_lng } 
+          : null
 
       return {
         id: buyer.id,

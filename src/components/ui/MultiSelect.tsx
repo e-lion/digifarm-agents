@@ -21,6 +21,7 @@ interface MultiSelectProps {
   className?: string
   disabled?: boolean
   onSearch?: (term: string) => void
+  closeOnSelect?: boolean
 }
 
 export function MultiSelect({
@@ -30,7 +31,8 @@ export function MultiSelect({
   placeholder = "Select options...",
   className,
   disabled = false,
-  onSearch
+  onSearch,
+  closeOnSelect = false
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -159,7 +161,7 @@ export function MultiSelect({
                           : [...selected, option]
                       )
                       setInputValue("")
-                      // Keep open
+                      if (closeOnSelect) setOpen(false)
                     }}
                     className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm font-medium outline-none transition-colors",

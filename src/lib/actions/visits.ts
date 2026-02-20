@@ -3,9 +3,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Database } from '@/types/database'
-import circle from '@turf/circle'
-import { point } from '@turf/helpers'
-
 type VisitInsert = Database['public']['Tables']['visits']['Insert']
 type BuyerInsert = Database['public']['Tables']['buyers']['Insert']
 
@@ -33,8 +30,6 @@ export async function createVisitAction(data: {
   value_chains: string[]
   county: string
   scheduled_date: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  polygon_coords: any
   contact_name: string
   contact_phone: string
   contact_designation: string
@@ -91,8 +86,7 @@ export async function createVisitAction(data: {
     buyer_type: data.buyer_type,
     activity_type: data.activity_type,
     scheduled_date: data.scheduled_date,
-    status: 'planned',
-    polygon_coords: data.polygon_coords
+    status: 'planned'
   }
   const { error: visitError } = await supabase.from('visits').insert(visitData)
 
@@ -158,17 +152,13 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function recordCheckInAction(visitId: string, coords: {lat: number, lng: number}, polygon_coords?: any) {
+export async function recordCheckInAction(visitId: string, coords: {lat: number, lng: number}) {
   const supabase = await createClient()
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: any = {
     checked_in_at: new Date().toISOString(),
     check_in_location: `POINT(${coords.lng} ${coords.lat})`
-  }
-
-  if (polygon_coords) {
-    updateData.polygon_coords = polygon_coords
   }
 
   const { data: updatedVisit, error } = await supabase
@@ -227,20 +217,6 @@ export async function createBulkVisits(visits: {
       const buyer = buyersMap.get(visit.buyer_id)
       if (!buyer) continue
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let polygonGeometry: any = null
-      
-      // Generate 100m radius polygon if buyer has location
-      if (buyer.location_lat && buyer.location_lng) {
-        try {
-          const center = point([buyer.location_lng, buyer.location_lat])
-          const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
-          polygonGeometry = circularPolygon.geometry
-        } catch (e) {
-          console.error(`Error generating polygon for buyer ${buyer.name}:`, e)
-        }
-      }
-
       visitsToInsert.push({
         agent_id: user.id,
         buyer_id: buyer.id,
@@ -249,7 +225,6 @@ export async function createBulkVisits(visits: {
         activity_type: visit.activity_type,
         scheduled_date: visit.scheduled_date,
         status: 'planned',
-        polygon_coords: polygonGeometry,
         visit_category: visit.visit_category || 'First Time'
       })
   }
@@ -294,20 +269,6 @@ export async function addBuyerToRouteAction(
     return { error: 'Buyer not found' }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let polygonGeometry: any = null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const b = buyer as any
-  if (b.location_lat && b.location_lng) {
-    try {
-      const center = point([b.location_lng, b.location_lat])
-      const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
-      polygonGeometry = circularPolygon.geometry
-    } catch (e) {
-      console.error(`Error generating polygon for buyer ${buyer.name}:`, e)
-    }
-  }
-
   // 2. Insert visit
   const visitData: VisitInsert = {
     agent_id: user.id,
@@ -317,7 +278,6 @@ export async function addBuyerToRouteAction(
     activity_type: activityType,
     scheduled_date: scheduledDate,
     status: 'planned',
-    polygon_coords: polygonGeometry,
     visit_category: visitCategory,
   }
 
@@ -385,20 +345,6 @@ export async function swapBuyerInRouteAction(
     return { error: 'New buyer not found' }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let polygonGeometry: any = null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const b = newBuyer as any
-  if (b.location_lat && b.location_lng) {
-    try {
-      const center = point([b.location_lng, b.location_lat])
-      const circularPolygon = circle(center, 0.1, { units: 'kilometers', steps: 64 })
-      polygonGeometry = circularPolygon.geometry
-    } catch (e) {
-      console.error(`Error generating polygon for buyer ${newBuyer.name}:`, e)
-    }
-  }
-
   // 3. Update visit
   const { error: visitError } = await supabase
     .from('visits')
@@ -408,7 +354,6 @@ export async function swapBuyerInRouteAction(
       buyer_type: newBuyer.business_type || 'Unknown',
       activity_type: activityType,
       status: 'planned',
-      polygon_coords: polygonGeometry,
       visit_category: visitCategory,
       visit_details: null,
       check_in_location: null,

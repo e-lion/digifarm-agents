@@ -32,7 +32,7 @@ interface Visit {
     activity_type: string | null
     visit_category: string | null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    polygon_coords: any
+    buyers?: { location_lat: number, location_lng: number } | any
 }
 
 interface AnalyticsViewProps {
@@ -136,16 +136,9 @@ export function AnalyticsView({
       // Need to extract coordinates. Let's assume standard format for now.
       // If it's a string, we might need to parse. For now assume it's like [lat, lng]
       // Wait, location might be stored as WKB or GeoJSON in Supabase. 
-      // Let's use polygon_coords for safe fallback if check_in_location parsing fails.
-      
       let position: [number, number] | null = null;
-      try {
-          if (v.polygon_coords && Array.isArray(v.polygon_coords?.coordinates?.[0])) {
-             const coords = v.polygon_coords.coordinates[0][0]; // [lng, lat]
-             position = [coords[1], coords[0]];
-          }
-      } catch (e) {
-          console.error(e)
+      if (v.buyers?.location_lat) {
+          position = [v.buyers.location_lat, v.buyers.location_lng];
       }
 
       return position ? {

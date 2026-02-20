@@ -268,7 +268,6 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           id: string
-          polygon_coords: Json | null
           scheduled_date: string
           status: string
           visit_category: string | null
@@ -285,7 +284,6 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           id?: string
-          polygon_coords?: Json | null
           scheduled_date: string
           status?: string
           visit_category?: string | null
@@ -302,7 +300,6 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           id?: string
-          polygon_coords?: Json | null
           scheduled_date?: string
           status?: string
           visit_category?: string | null

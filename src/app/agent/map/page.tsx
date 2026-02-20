@@ -8,40 +8,41 @@ export default async function AgentMapPage() {
 
   const { data: visits } = await supabase
     .from('visits')
-    .select('*')
+    .select('*, buyers(location_lat, location_lng)')
     .eq('agent_id', user?.id)
   
-  // Format polygons for the map
-  const mapPolygons = visits?.filter(v => v.polygon_coords).map(v => ({
-    id: v.id,
-    // GeoJSON is LngLat, Leaflet is LatLng. 
-    // If stored as GeoJSON { type: 'Polygon', coordinates: [[[lng, lat], ...]] }
-    // We need to check the format.
-    // Based on PolygonEditor, it returns [lat, lng] arrays?
-    // Let's check how it's saved.
-    // In VisitForm, `check_in_location` is POINT(lng lat).
-    // The polygon comes from `polygon_coords` column.
-    // If it's pure standard GeoJSON from PostGIS, it's LngLat. Leaflet wants LatLng.
-    // Let's assume standard GeoJSON and swap if needed.
-    // For now, let's map assuming the stored format.
-    // If using `polygon(targetPolygon.coordinates)` in Turf, it expects GeoJSON.
-    
-    // Let's safely handle 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    coords: v.polygon_coords?.coordinates?.[0]?.map((c: any) => [c[1], c[0]]) || [],
-    color: v.status === 'completed' ? 'green' : 'blue',
-    name: v.buyer_name
-  })) || []
+  // Format for the map
+  const mapData = visits?.filter(v => (v.buyers as any)?.location_lat).map(v => {
+    const b = v.buyers as any
+    return {
+      marker: {
+        id: v.id,
+        position: [b.location_lat, b.location_lng] as [number, number],
+        popup: v.buyer_name
+      },
+      circle: {
+        id: `range-${v.id}`,
+        center: [b.location_lat, b.location_lng] as [number, number],
+        radius: 100,
+        color: v.status === 'completed' ? '#16a34a' : '#2563eb',
+        name: `${v.buyer_name} Geofence`
+      }
+    }
+  }) || []
 
+  const markers = mapData.map(d => d.marker)
+  const circles = mapData.map(d => d.circle)
+  
   // Collect all points to calculate bounds
-  const allPoints = mapPolygons.flatMap(p => p.coords)
+  const allPoints = markers.map(m => m.position)
   const hasPolygons = allPoints.length > 0
   
   return (
     <>
       <div className="h-[calc(100vh-180px)] w-full rounded-lg overflow-hidden border border-gray-200 shadow-sm relative z-0">
          <Map 
-           polygons={mapPolygons} 
+           markers={markers}
+           circles={circles}
            zoom={11}
            className="h-full w-full"
            bounds={hasPolygons ? allPoints : null}

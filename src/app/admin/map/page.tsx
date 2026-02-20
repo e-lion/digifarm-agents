@@ -7,18 +7,31 @@ export default async function GlobalMapPage() {
 
   const { data: visits } = await supabase
     .from('visits')
-    .select('id, buyer_name, polygon_coords, check_in_location, status, agent_id, profiles(full_name)')
+    .select('id, buyer_name, check_in_location, status, agent_id, profiles(full_name), buyers(location_lat, location_lng)')
   
   // Transform for map
-  const polygons = visits?.filter(v => v.polygon_coords).map(v => ({
-    id: v.id,
-    // GeoJSON is LngLat, Leaflet is LatLng
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    coords: v.polygon_coords.coordinates[0].map((c: any) => [c[1], c[0]]), 
-    color: v.status === 'completed' ? 'green' : 'blue',
-    // @ts-expect-error type inference from profiles is tricky
-    name: `${v.buyer_name} (${v.profiles?.full_name || (Array.isArray(v.profiles) ? v.profiles[0]?.full_name : null) || 'Assigned'})`
-  })) || []
+  const mapData = visits?.filter(v => (v.buyers as any)?.location_lat).map(v => {
+    const b = v.buyers as any
+    const agentName = (v.profiles as any)?.full_name || 'Assigned Agent'
+    
+    return {
+      marker: {
+        id: v.id,
+        position: [b.location_lat, b.location_lng] as [number, number],
+        popup: `${v.buyer_name} (${agentName})`
+      },
+      circle: {
+        id: `range-${v.id}`,
+        center: [b.location_lat, b.location_lng] as [number, number],
+        radius: 100,
+        color: v.status === 'completed' ? '#16a34a' : '#2563eb',
+        name: `${v.buyer_name} Geofence`
+      }
+    }
+  }) || []
+
+  const markers = mapData.map(d => d.marker)
+  const circles = mapData.map(d => d.circle)
 
   // Add markers for completed check-ins
   // Note: PostGIS point handling needs parsing, simplification for now:
@@ -36,7 +49,8 @@ export default async function GlobalMapPage() {
         
         <div className="h-[calc(100vh-220px)] md:h-[calc(100vh-180px)] w-full border border-gray-300 rounded-xl overflow-hidden shadow-sm relative z-0">
              <DynamicMap 
-                polygons={polygons} 
+                markers={markers}
+                circles={circles}
                 className="h-full w-full"
                 center={[-1.2921, 36.8219]}
                 zoom={11}
