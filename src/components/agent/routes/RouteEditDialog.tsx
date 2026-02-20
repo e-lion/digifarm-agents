@@ -214,7 +214,7 @@ export function RouteEditDialog({
               control={control}
               render={({ field }) => (
                 <SearchableSelect
-                  options={['First Time', 'Repeat Visit']}
+                  options={['First Time', 'Repeat']}
                   value={field.value || ''}
                   onChange={field.onChange}
                   placeholder="Select visit category..."
