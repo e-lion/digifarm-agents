@@ -37,6 +37,18 @@ export async function getBuyers(
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
 
+    // 0. Get user profile for filtering
+    const { data: { user } } = await supabase.auth.getUser()
+    let profile = null
+    if (user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role, counties')
+        .eq('id', user.id)
+        .single()
+      profile = profileData
+    }
+
     // 1. Fetch buyers with their latest visits in a single relational query
     // We use a nested select to grab the relevant visit data directly
     let query = supabase
@@ -52,6 +64,11 @@ export async function getBuyers(
         )
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
+
+    // Apply county filter for agents
+    if (profile?.role === 'agent' && profile.counties && profile.counties.length > 0) {
+      query = query.in('county', profile.counties)
+    }
 
     if (search) {
       const searchPattern = `%${search}%`
@@ -158,12 +175,29 @@ export async function getBuyersList(
 ): Promise<{ data: BuyerOption[], count: number }> {
   const supabase = await createClient()
   
+  // 0. Get user profile for filtering
+  const { data: { user } } = await supabase.auth.getUser()
+  let profile = null
+  if (user) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('role, counties')
+      .eq('id', user.id)
+      .single()
+    profile = profileData
+  }
+
   // 1. Fetch buyers with location columns
   let query = supabase
     .from('buyers')
     .select('id, name, contact_name, phone, business_type, value_chain, value_chains, county, location_lat, location_lng', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order('name', { ascending: true })
     .range(offset, offset + limit - 1)
+
+  // Apply county filter for agents
+  if (profile?.role === 'agent' && profile.counties && profile.counties.length > 0) {
+    query = query.in('county', profile.counties)
+  }
 
   if (search) {
     query = query.ilike('name', `%${search}%`)

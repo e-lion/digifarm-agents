@@ -32,6 +32,10 @@ export async function submitOnboarding(prevState: any, formData: FormData) {
     console.error('Failed to parse counties:', e)
   }
 
+  if (!counties || counties.length === 0) {
+    return { error: 'Please select at least one operating county' }
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({

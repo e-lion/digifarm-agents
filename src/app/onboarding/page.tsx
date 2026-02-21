@@ -88,13 +88,14 @@ export default function OnboardingPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Operating Counties
+                Operating Counties <span className="text-red-500">*</span>
               </label>
               <MultiSelect
                 options={kenyaCounties}
                 selected={selectedCounties}
                 onChange={setSelectedCounties}
                 placeholder="Select counties..."
+                closeOnSelect={true}
               />
               <p className="mt-1 text-xs text-gray-500">Select the counties where you will be operating.</p>
             </div>

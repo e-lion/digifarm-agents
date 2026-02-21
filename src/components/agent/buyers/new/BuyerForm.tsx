@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm, Controller } from "react-hook-form";
+import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import {
   getValueChains,
   getContactDesignations,
 } from "@/lib/actions/buyers";
+import { getCurrentProfile } from "@/lib/actions/users";
 import { kenyaCounties } from "@/lib/constants/counties";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -71,6 +73,17 @@ export function BuyerForm() {
     queryKey: ["contactDesignations"],
     queryFn: getContactDesignations,
   });
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: getCurrentProfile,
+  });
+
+  const availableCounties = useMemo(() => {
+    if (profile?.role === "admin" || !profile?.counties || profile.counties.length === 0) {
+      return kenyaCounties;
+    }
+    return kenyaCounties.filter(c => profile.counties.includes(c));
+  }, [profile]);
 
   const {
     register,
@@ -223,7 +236,7 @@ export function BuyerForm() {
               control={control}
               render={({ field }) => (
                 <SearchableSelect
-                  options={kenyaCounties}
+                  options={availableCounties}
                   value={field.value || ""}
                   onChange={field.onChange}
                   placeholder="Select county..."

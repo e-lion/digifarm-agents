@@ -98,7 +98,7 @@ export default function VisitForm(props: {
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false)
   const [distanceToTarget, setDistanceToTarget] = useState<number | null>(null)
   const [showNoLocationPrompt, setShowNoLocationPrompt] = useState(false)
-  const [selectedContactId, setSelectedContactId] = useState<string>('new')
+  const [selectedContactId, setSelectedContactId] = useState<string>(initialData?.contact_id || existingContacts?.[0]?.id || 'new')
   const [mapBounds, setMapBounds] = useState<[number, number][] | null>(null)
   const router = useRouter()
 
