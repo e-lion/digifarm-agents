@@ -100,6 +100,11 @@ export async function createVisitAction(data: {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateVisitAction(visitId: string, buyerName: string, data: any, coords: {lat: number, lng: number} | null) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'You must be logged in' }
+  }
 
   // 1. Update buyer contact info (Primary)
   const { data: savedBuyer, error: buyerError } = await supabase.from('buyers').upsert({
@@ -154,8 +159,12 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function recordCheckInAction(visitId: string, coords: {lat: number, lng: number}) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'You must be logged in' }
+  }
   
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: any = {
     checked_in_at: new Date().toISOString(),
     check_in_location: `POINT(${coords.lng} ${coords.lat})`

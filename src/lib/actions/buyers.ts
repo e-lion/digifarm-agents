@@ -323,6 +323,11 @@ export async function getBuyerContacts(buyerId: string) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createBuyer(data: any) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'You must be logged in' }
+  }
   
   try {
       // 1. Create the buyer
@@ -371,6 +376,11 @@ export async function createBuyer(data: any) {
 
 export async function updateBuyerContact(buyerId: string, contact: { name: string, phone: string, designation?: string }) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'You must be logged in' }
+    }
 
     try {
         // 1. Update the buyer's primary contact info
@@ -407,6 +417,11 @@ export async function updateBuyerContact(buyerId: string, contact: { name: strin
 // Update buyer location (lat/lng)
 export async function updateBuyerLocation(buyerId: string, lat: number, lng: number) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'You must be logged in' }
+    }
 
     try {
         const { error } = await supabase

@@ -5,6 +5,23 @@ import { revalidatePath } from 'next/cache'
 
 export async function toggleAccess(email: string, currentStatus: 'activated' | 'deactivated') {
   const supabase = await createClient()
+
+  // 0. Verify Auth & Admin Role
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    throw new Error('Forbidden: Admins only')
+  }
+
   const newStatus = currentStatus === 'activated' ? 'deactivated' : 'activated'
 
   // Update profile_access (always exists for any entry in our unified list)
@@ -37,6 +54,23 @@ export async function addAgent(formData: FormData) {
   if (!email) return
 
   const supabase = await createClient()
+
+  // 0. Verify Auth & Admin Role
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    throw new Error('Forbidden: Admins only')
+  }
+
   const { error } = await supabase.from('profile_access').insert({ 
     email, 
     role,
