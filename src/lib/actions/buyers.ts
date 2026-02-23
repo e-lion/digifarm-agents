@@ -14,6 +14,7 @@ export interface BuyerWithStats {
   created_at: string
   agent_count: number
   agent_names: string[]
+  total_visits: number
   last_visited: string | null
   latest_visit_status: string | null
   latest_visit_agent_name: string | null
@@ -137,6 +138,7 @@ export async function getBuyers(
         created_at: buyer.created_at,
         agent_count: agents.size,
         agent_names: Array.from(agents),
+        total_visits: buyerVisits.length,
         last_visited: lastVisit,
         latest_visit_status: latestStatus,
         latest_visit_agent_name: latestAgent,

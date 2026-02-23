@@ -60,7 +60,7 @@ export default function BuyersTable({
         const { buyers: allBuyers } = await getBuyers(1, 10000, currentSearch)
         
         // CSV Export
-        const headers = ['Name', 'Created At', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Names', 'Latest Agent', 'Latest Status', 'Date Visited']
+        const headers = ['Name', 'Created At', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Names', 'Number of Engagements', 'Last Visited Date']
         const csvContent = [
         headers.join(','),
         ...allBuyers.map(b => [
@@ -72,8 +72,7 @@ export default function BuyersTable({
             `"${b.business_type || ''}"`,
             `"${b.county || ''}"`,
             `"${b.agent_names.join(', ')}"`,
-            `"${b.latest_visit_agent_name || ''}"`,
-            `"${b.latest_visit_status || ''}"`,
+            `"${b.total_visits || 0}"`,
             b.latest_visit_checked_in_at || b.last_visited ? new Date(b.latest_visit_checked_in_at || b.last_visited!).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
         ].join(','))
         ].join('\n')
@@ -131,8 +130,8 @@ export default function BuyersTable({
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Contact Info</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Value Chain</th>
                 <th className="px-6 py-4 uppercase text-xs tracking-wider">Location</th>
-                <th className="px-6 py-4 uppercase text-xs tracking-wider">Agent Engagement</th>
-                <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Date Visited</th>
+                <th className="px-6 py-4 uppercase text-xs tracking-wider">Number of Engagements</th>
+                <th className="px-6 py-4 uppercase text-xs tracking-wider text-right">Last Visited Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -191,23 +190,14 @@ export default function BuyersTable({
                         </div>
                     </td>
                     <td className="px-6 py-4">
-                      {buyer.latest_visit_agent_name ? (
-                        <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-900 flex items-center gap-1.5">
-                            <User className="h-3 w-3 text-green-600" />
-                            {buyer.latest_visit_agent_name}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-tighter ${
-                              buyer.latest_visit_status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {buyer.latest_visit_status}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">No visits planned</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center bg-green-100 text-green-700 h-6 px-2.5 rounded-full text-xs font-bold">
+                          {buyer.total_visits || 0}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {buyer.total_visits === 1 ? 'Visit' : 'Visits'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                         {buyer.latest_visit_checked_in_at || buyer.latest_visit_completed_at || buyer.last_visited ? (

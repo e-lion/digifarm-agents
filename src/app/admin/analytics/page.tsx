@@ -10,10 +10,21 @@ export default async function AnalyticsPage({
   const supabase = await createClient()
   const params = await searchParams
   
-  // Default to today if no date provided
-  const today = new Date().toISOString().split('T')[0]
-  const startDate = params.startDate || today
-  const endDate = params.endDate || today
+  // Default date range: beginning of current week (Sunday) to end of current week (Saturday)
+  const now = new Date()
+  
+  const dayOfWeek = now.getDay()
+  
+  const beginningOfWeek = new Date(now)
+  beginningOfWeek.setDate(now.getDate() - dayOfWeek)
+  const defaultStartDate = beginningOfWeek.toISOString().split('T')[0]
+
+  const endOfWeek = new Date(beginningOfWeek)
+  endOfWeek.setDate(beginningOfWeek.getDate() + 6)
+  const defaultEndDate = endOfWeek.toISOString().split('T')[0]
+
+  const startDate = params.startDate || defaultStartDate
+  const endDate = params.endDate || defaultEndDate
 
   // Get current user to exclude self
   const { data: { user } } = await supabase.auth.getUser()

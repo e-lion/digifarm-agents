@@ -15,7 +15,7 @@ import { RouteEditDialog } from './routes/RouteEditDialog'
 
 const PAGE_SIZE = 10
 
-export function RouteList({ userId }: { userId: string }) {
+export function RouteList() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming')
   const [statusFilter, setStatusFilter] = useState<'all' | 'planned' | 'completed'>('all')
   const [dateFilter, setDateFilter] = useState('')
@@ -30,8 +30,17 @@ export function RouteList({ userId }: { userId: string }) {
   const [selectedDateProps, setSelectedDateProps] = useState<string>('')
   const [selectedVisitId, setSelectedVisitId] = useState<string>('')
   const [selectedBuyerName, setSelectedBuyerName] = useState<string>('')
+  const [userId, setUserId] = useState<string | null>(null)
 
   const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setUserId(data.user.id)
+      }
+    })
+  }, [supabase.auth])
 
   const fetchVisits = async ({ pageParam = 0 }) => {
     // Get today's date string in YYYY-MM-DD for accurate comparison (local time)
@@ -44,7 +53,7 @@ export function RouteList({ userId }: { userId: string }) {
     let query = supabase
       .from('visits')
       .select('*')
-      .eq('agent_id', userId)
+      .eq('agent_id', userId as string)
       .order('status', { ascending: false })
       .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1)
 
@@ -81,6 +90,7 @@ export function RouteList({ userId }: { userId: string }) {
     queryKey: ['visits', userId, activeTab, statusFilter, dateFilter],
     queryFn: fetchVisits,
     initialPageParam: 0,
+    enabled: !!userId,
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined
     },
@@ -323,6 +333,7 @@ export function RouteList({ userId }: { userId: string }) {
                         key={visit.id} 
                         {...wrapperProps}
                         className="block"
+                        prefetch={isClickable ? false : undefined}
                       >
                         <Card className={cn(
                             "group overflow-hidden border-l-4 shadow-sm active:scale-[0.98] transition-all hover:shadow-md relative",

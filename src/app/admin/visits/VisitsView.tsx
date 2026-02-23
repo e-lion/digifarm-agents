@@ -23,6 +23,7 @@ interface Visit {
   actual_date?: string
   feedback?: string
   active_farmers?: number
+  activity_type?: string
 }
 
 interface VisitsViewProps {
@@ -110,7 +111,7 @@ export function VisitsView({
             endDate: currentEndDate
         })
         
-        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Active Farmers', 'Status', 'Feedback']
+        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Reason', 'Active Farmers', 'Status', 'Feedback']
         const csvContent = [
             headers.join(','),
             ...allVisits.map(v => [
@@ -120,6 +121,7 @@ export function VisitsView({
                 `"${v.agent_name}"`,
                 v.agent_email,
                 v.visit_category || 'General',
+                v.activity_type || 'Unspecified',
                 v.active_farmers || 0,
                 v.status,
                 `"${(v.feedback || '').replace(/"/g, '""')}"`
@@ -264,125 +266,121 @@ export function VisitsView({
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-sm overflow-hidden">
+      <Card className="border-gray-100 shadow-sm overflow-hidden bg-white">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+              <thead className="bg-gray-50/80 text-gray-500 font-medium border-b border-gray-100 uppercase tracking-wide text-[11px]">
                 <tr>
-                  <th className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Scheduled
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                       <CheckCircle2 className="h-4 w-4" />
-                       Visit Date
-                    </div>
-                  </th>
-                  <th className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Agent
-                    </div>
-                  </th>
-                  <th className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <ShoppingBag className="h-4 w-4" />
-                      Customer / Buyer
-                    </div>
-                  </th>
-                  <th className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4" />
-                      Category
-                    </div>
-                  </th>
-                  <th className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Farmers
-                    </div>
-                  </th>
-                  <th className="px-6 py-4">Feedback</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Details</th>
+                  <th className="px-6 py-4">Visit Details</th>
+                  <th className="px-6 py-4">Customer</th>
+                  <th className="px-6 py-4">Agent</th>
+                  <th className="px-6 py-4">Context</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 bg-white">
+              <tbody className="divide-y divide-gray-50/50 bg-white">
                 {initialVisits.length > 0 ? (
                   initialVisits.map((visit) => (
-                    <tr key={visit.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-xs">
-                        {new Date(visit.scheduled_date).toLocaleDateString('en-KE', {
-                          day: 'numeric',
-                          month: 'short',
-                        })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-medium">
-                        {visit.actual_date ? (
-                          new Date(visit.actual_date).toLocaleDateString('en-KE', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          })
-                        ) : (
-                          <span className="text-gray-300 italic">Not Visited</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900">{visit.agent_name}</span>
-                          <span className="text-xs text-gray-400">{visit.agent_email}</span>
+                    <tr key={visit.id} className="hover:bg-gray-50/80 transition-all duration-200">
+                      
+                      {/* Visit Details (Dates + Status) */}
+                      <td className="px-6 py-4 whitespace-nowrap align-top">
+                        <div className="flex flex-col gap-1.5">
+                           <span className={`inline-flex items-center w-fit px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider border ${getStatusColor(visit.status)}`}>
+                             {visit.status === 'completed' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                             {visit.status}
+                           </span>
+                           <div className="flex flex-col text-xs mt-1">
+                              <span className="text-gray-500 flex flex-col">
+                                 <span className="font-semibold text-gray-400 text-[10px] uppercase">Scheduled</span>
+                                 {new Date(visit.scheduled_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric'})}
+                              </span>
+                              {visit.actual_date && (
+                                <span className="text-green-700 flex flex-col mt-1.5">
+                                    <span className="font-semibold text-green-600/60 text-[10px] uppercase">Visited On</span>
+                                    {new Date(visit.actual_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric'})}
+                                </span>
+                              )}
+                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+
+                      {/* Customer Info */}
+                      <td className="px-6 py-4 align-top max-w-[200px]">
                         <div className="flex flex-col">
-                          <span className="font-medium text-gray-700">{visit.buyer_name}</span>
-                          <span className="text-[10px] uppercase font-semibold text-gray-400">
-                            {visit.buyer_type || 'Unknown Type'}
-                          </span>
+                          <span className="font-semibold text-gray-900 truncate">{visit.buyer_name}</span>
+                          <div className="flex items-center gap-2 mt-1">
+                             <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider text-gray-500 border-gray-200 bg-gray-50">
+                               {visit.buyer_type || 'Unknown'}
+                             </Badge>
+                             <span className="text-[10px] flex items-center gap-1 text-blue-600 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
+                                <Users className="h-3 w-3" /> {visit.active_farmers || 0} Farmers
+                             </span>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-100 font-medium">
-                          {visit.visit_category || 'General'}
-                        </Badge>
+
+                      {/* Agent Info */}
+                      <td className="px-6 py-4 align-top">
+                        <div className="flex items-start gap-3">
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center border border-green-200">
+                                <span className="text-green-700 font-bold text-xs">
+                                  {visit.agent_name.charAt(0).toUpperCase()}
+                                </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-gray-900 text-sm leading-none mt-1">{visit.agent_name}</span>
+                              <span className="text-[11px] text-gray-500 mt-1 truncate max-w-[150px]">{visit.agent_email}</span>
+                            </div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-bold text-gray-900">{visit.active_farmers || 0}</span>
+
+                      {/* Context (Category & Feedback) */}
+                      <td className="px-6 py-4 align-top max-w-[250px]">
+                         <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="secondary" className="w-fit bg-purple-50 text-purple-700 border border-purple-100 text-[10px]">
+                                <Tag className="h-3 w-3 mr-1" />
+                                {visit.visit_category || 'General'}
+                              </Badge>
+                              {visit.activity_type && (
+                                <Badge variant="outline" className="w-fit text-gray-600 border-gray-200 text-[10px]">
+                                  {visit.activity_type}
+                                </Badge>
+                              )}
+                            </div>
+                            {visit.feedback ? (
+                              <div className="flex items-start gap-1.5 text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 text-xs">
+                                 <MessageSquare className="h-3 w-3 mt-0.5 shrink-0 text-gray-400" />
+                                 <p className="line-clamp-2" title={visit.feedback}>{visit.feedback}</p>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-xs italic ml-1">No feedback provided</span>
+                            )}
+                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        {visit.feedback ? (
-                          <p className="text-xs text-gray-600 line-clamp-2 max-w-[200px]" title={visit.feedback}>
-                            {visit.feedback}
-                          </p>
-                        ) : (
-                          <span className="text-gray-300 italic">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusColor(visit.status)}`}>
-                            {visit.status === 'completed' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                            {visit.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
+
+                      {/* Actions */}
+                      <td className="px-6 py-4 text-right align-middle">
                         <Link 
                           href={`/admin/visits/${visit.id}`}
-                          className="inline-flex items-center justify-center p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-colors"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          View 
+                          <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                       </td>
+
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                      No visits found.
+                    <td colSpan={5} className="px-6 py-16 text-center text-gray-500 bg-gray-50/50">
+                       <div className="flex flex-col items-center justify-center space-y-3">
+                          <ShoppingBag className="h-8 w-8 text-gray-300" />
+                          <p className="text-sm font-medium text-gray-600">No visits found matching your criteria</p>
+                       </div>
                     </td>
                   </tr>
                 )}
