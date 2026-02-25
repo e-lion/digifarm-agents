@@ -44,7 +44,7 @@ function MapUpdater({ center, zoom, bounds }: { center: [number, number]; zoom: 
         // Create a LatLngBounds object from the points
         const latLngBounds = L.latLngBounds(bounds.map(c => L.latLng(c[0], c[1])))
         if (latLngBounds.isValid()) {
-            map.fitBounds(latLngBounds, { padding: [50, 50] })
+            map.fitBounds(latLngBounds, { padding: [20, 20], maxZoom: 18 })
             return
         }
     }
