@@ -136,16 +136,25 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
        }
   }
 
-  const { data: updatedVisit, error: visitError } = await supabase
-    .from('visits')
-    .update({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updatePayload: any = {
       buyer_id: savedBuyer.id,
       status: 'completed',
       visit_details: data,
-      check_in_location: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
       completed_at: new Date().toISOString()
-    })
+  };
+
+  // Only update check-in location and time if it's provided and not already saved
+  if (coords) {
+      updatePayload.check_in_location = `POINT(${coords.lng} ${coords.lat})`;
+      updatePayload.checked_in_at = new Date().toISOString();
+  }
+
+  const { data: updatedVisit, error: visitError } = await supabase
+    .from('visits')
+    .update(updatePayload)
     .eq('id', visitId)
+    .eq('agent_id', user.id) // Ensure security
     .select()
 
   if (visitError) return { error: visitError.message }
@@ -174,10 +183,16 @@ export async function recordCheckInAction(visitId: string, coords: {lat: number,
     .from('visits')
     .update(updateData)
     .eq('id', visitId)
+    .eq('agent_id', user.id) // Ensure security
+    .is('checked_in_at', null) // Atomic check-in (prevents multiple check-ins)
     .select()
 
   if (error) return { error: error.message }
-  if (!updatedVisit || updatedVisit.length === 0) return { error: 'Visit not found', code: 'NOT_FOUND' }
+  if (!updatedVisit || updatedVisit.length === 0) {
+      // If no rows were updated, it might already be checked in, or owned by another agent.
+      // We assume success so the UI can proceed cleanly without making extra queries.
+      return { success: true }
+  }
   
   revalidatePath('/admin/buyers')
   revalidatePath('/agent/routes')

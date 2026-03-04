@@ -57,6 +57,62 @@ const DynamicMap = dynamic(() => import('@/components/map/Map'), {
   ssr: false 
 })
 
+// Helper to parse check_in_location from Supabase (can be WKT string or GeoJSON object)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const parsePoint = (pt: any) => {
+  if (!pt) return null
+  
+  // If it's a GeoJSON object (sometimes handled via Supabase/PostgREST naturally)
+  if (typeof pt === 'object') {
+    if (pt.type === 'Point' && Array.isArray(pt.coordinates)) {
+      return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
+    }
+    if (pt.coordinates && Array.isArray(pt.coordinates)) {
+      return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
+    }
+  }
+
+  // If it's a string (WKT or HEX EWKB)
+  if (pt.startsWith('POINT(')) {
+    const match = pt.match(/\((.*)\)/)
+    if (match) {
+      const parts = match[1].trim().split(/\s+/)
+      if (parts.length >= 2) {
+        const [lng, lat] = parts.map(Number)
+        return { lat, lng }
+      }
+    }
+  }
+  
+  // HEX EWKB Handle (Standard PostGIS return format)
+  // Usually starts with 0101 (Little Endian Point)
+  if (/^[0-9A-Fa-f]+$/.test(pt) && pt.length >= 50) {
+    try {
+      // Point 4326 EWKB: [1 byte endian] [4 bytes type] [4 bytes SRID] [8 bytes X] [8 bytes Y]
+      // Endian (01) + Type (01000020) + SRID (E6100000) = 9 bytes total before coords (18 hex chars)
+      // X starts at char 18 (byte 9), Y starts at char 34 (byte 17)
+      const hexToDouble = (hex: string, le: boolean) => {
+        const bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)))
+        if (!le) bytes.reverse() // Basic handled for big endian if needed
+        const view = new DataView(bytes.buffer)
+        return view.getFloat64(0, true) // Leaflet/PostGIS mostly LE
+      }
+      
+      const isLittleEndian = pt.startsWith('01')
+      const lng = hexToDouble(pt.substring(18, 34), isLittleEndian)
+      const lat = hexToDouble(pt.substring(34, 50), isLittleEndian)
+      
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return { lat, lng }
+      }
+    } catch (e) {
+      console.error("EWKB Parse Error:", e)
+    }
+  }
+  
+  return null
+}
+
 export default function VisitForm(props: { 
   visitId: string, 
   buyerId?: string,
@@ -90,9 +146,12 @@ export default function VisitForm(props: {
     isAdmin = false
   } = props;
 
-  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(isAdmin ? true : null)
+  const savedCoords = parsePoint(checkInLocation)
+
+  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(isAdmin ? true : (savedCoords ? true : null))
   const [locationChecking, setLocationChecking] = useState(false)
-  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null)
+  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(savedCoords)
+  const [hasCheckedInOnline, setHasCheckedInOnline] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isOfflineSaved, setIsOfflineSaved] = useState(false)
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false)
@@ -101,66 +160,6 @@ export default function VisitForm(props: {
   const [selectedContactId, setSelectedContactId] = useState<string>(initialData?.contact_id || existingContacts?.[0]?.id || 'new')
   const [mapBounds, setMapBounds] = useState<[number, number][] | null>(null)
   const router = useRouter()
-
-
-  // ... (parsePoint, savedCoords, mapMarkers, mapCircles helpers) ...
-  // Helper to parse check_in_location from Supabase (can be WKT string or GeoJSON object)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parsePoint = (pt: any) => {
-    if (!pt) return null
-    
-    // If it's a GeoJSON object (sometimes handled via Supabase/PostgREST naturally)
-    if (typeof pt === 'object') {
-      if (pt.type === 'Point' && Array.isArray(pt.coordinates)) {
-        return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
-      }
-      if (pt.coordinates && Array.isArray(pt.coordinates)) {
-        return { lat: pt.coordinates[1], lng: pt.coordinates[0] }
-      }
-    }
-
-    // If it's a string (WKT or HEX EWKB)
-    if (pt.startsWith('POINT(')) {
-      const match = pt.match(/\((.*)\)/)
-      if (match) {
-        const parts = match[1].trim().split(/\s+/)
-        if (parts.length >= 2) {
-          const [lng, lat] = parts.map(Number)
-          return { lat, lng }
-        }
-      }
-    }
-    
-    // HEX EWKB Handle (Standard PostGIS return format)
-    // Usually starts with 0101 (Little Endian Point)
-    if (/^[0-9A-Fa-f]+$/.test(pt) && pt.length >= 50) {
-      try {
-        // Point 4326 EWKB: [1 byte endian] [4 bytes type] [4 bytes SRID] [8 bytes X] [8 bytes Y]
-        // Endian (01) + Type (01000020) + SRID (E6100000) = 9 bytes total before coords (18 hex chars)
-        // X starts at char 18 (byte 9), Y starts at char 34 (byte 17)
-        const hexToDouble = (hex: string, le: boolean) => {
-          const bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)))
-          if (!le) bytes.reverse() // Basic handled for big endian if needed
-          const view = new DataView(bytes.buffer)
-          return view.getFloat64(0, true) // Leaflet/PostGIS mostly LE
-        }
-        
-        const isLittleEndian = pt.startsWith('01')
-        const lng = hexToDouble(pt.substring(18, 34), isLittleEndian)
-        const lat = hexToDouble(pt.substring(34, 50), isLittleEndian)
-        
-        if (!isNaN(lat) && !isNaN(lng)) {
-          return { lat, lng }
-        }
-      } catch (e) {
-        console.error("EWKB Parse Error:", e)
-      }
-    }
-    
-    return null
-  }
-
-  const savedCoords = parsePoint(checkInLocation)
 
   // Helper for check-in circle (100m radius)
   const mapCircles = buyerLocation ? [{
@@ -350,7 +349,10 @@ export default function VisitForm(props: {
           
           // Also record check-in effectively
           if (visitId) {
-             await recordCheckInAction(visitId, coords)
+             const checkInResult = await recordCheckInAction(visitId, coords)
+             if (checkInResult.success) {
+                 setHasCheckedInOnline(true)
+             }
           }
 
       } catch (error) {
@@ -369,6 +371,7 @@ export default function VisitForm(props: {
           // Record check-in at current location (even if out of range)
           const result = await recordCheckInAction(visitId, coords)
           if (result.success) {
+              setHasCheckedInOnline(true)
               toast.success("Checked in as Offsite Visit")
               setIsWithinRange(true) // Allow proceeding
               setShowNoLocationPrompt(false)
@@ -428,7 +431,9 @@ export default function VisitForm(props: {
         
         if (isInside) {
           if (navigator.onLine && !isLocal) {
-            recordCheckInAction(visitId, { lat: latitude, lng: longitude })
+            recordCheckInAction(visitId, { lat: latitude, lng: longitude }).then(res => {
+               if (res.success) setHasCheckedInOnline(true)
+            })
           } else {
              toast.info("Working offline. Location verified locally.")
           }
@@ -504,7 +509,9 @@ export default function VisitForm(props: {
 
     // 2. Try Online Submission
     try {
-        const result = await updateVisitAction(visitId, buyerName, data, coords)
+        // Only submit new coords if we didn't already have saved coords AND we haven't just checked in online
+        const submitCoords = (savedCoords || hasCheckedInOnline) ? null : coords
+        const result = await updateVisitAction(visitId, buyerName, data, submitCoords)
 
         if (result.error) {
             // If it's a specific server error (not network), show it
@@ -573,9 +580,16 @@ export default function VisitForm(props: {
               {locationChecking ? (
                 <p className="text-sm text-gray-500 animate-pulse">Verifying location...</p>
               ) : isWithinRange === true ? (
-                <p className="text-sm font-semibold text-green-600 flex items-center gap-1">
-                  <CheckCircle className="h-4 w-4" /> You are within the designated area
-                </p>
+                <div className="space-y-1">
+                    <p className="text-sm font-semibold text-green-600 flex items-center justify-center gap-1">
+                      <CheckCircle className="h-4 w-4" /> {savedCoords ? 'Already Checked In' : 'You are within the designated area'}
+                    </p>
+                    {savedCoords && (
+                         <p className="text-xs text-gray-500">
+                             Location verified locally. You may proceed with the report.
+                         </p>
+                    )}
+                </div>
               ) : isWithinRange === false ? (
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-red-600 flex items-center justify-center gap-1">
@@ -590,15 +604,17 @@ export default function VisitForm(props: {
               )}
             </div>
 
-            <Button 
-              type="button" 
-              variant={isWithinRange === true ? "outline" : "secondary"}
-              onClick={checkLocation} 
-              isLoading={locationChecking}
-              className="w-full h-12 rounded-xl font-bold"
-            >
-              {isWithinRange === true ? "Re-verify Location" : "Start Check-in"}
-            </Button>
+            {!savedCoords && (
+                 <Button 
+                   type="button" 
+                   variant={isWithinRange === true ? "outline" : "secondary"}
+                   onClick={checkLocation} 
+                   isLoading={locationChecking}
+                   className="w-full h-12 rounded-xl font-bold"
+                 >
+                   {isWithinRange === true ? "Re-verify Location" : "Start Check-in"}
+                 </Button>
+            )}
 
             {isWithinRange === false && coords && (
                 <div className="space-y-3 p-4 bg-yellow-50 rounded-xl border border-yellow-200 animate-in fade-in slide-in-from-top-2">
