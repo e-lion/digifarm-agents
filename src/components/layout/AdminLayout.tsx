@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { LogOut } from 'lucide-react'
 import { AdminMobileNav } from './AdminMobileNav'
-import { AdminSidebar } from './AdminSidebar'
+import AdminSidebar from './AdminSidebar'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   return (

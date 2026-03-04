@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Users, Map as MapIcon, LogOut, ShoppingBag, Activity, ShieldCheck, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function AdminSidebar() {
+export default function AdminSidebar() {
   const pathname = usePathname()
 
   const links = [
