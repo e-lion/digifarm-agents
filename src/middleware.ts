@@ -37,27 +37,33 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
+  const getUrl = (path: string) => {
+    const url = new URL(path, request.url)
+    // If we're behind a proxy (like Cloudflare) that's terminating SSL,
+    // we want to ensure our redirects are always HTTPS.
+    if (url.hostname !== 'localhost' && !url.hostname.includes('127.0.0.1')) {
+      url.protocol = 'https:'
+    }
+    return url
+  }
+
   // Public paths
   if (path.startsWith('/auth/login') || path.startsWith('/api/auth') || path === '/') {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, first_name, last_name, phone_number, status')
+        .select('role, first_name, last_name, phone_number') // Removed 'status' to be safe
         .eq('id', user.id)
         .single()
 
-      if (profile?.status === 'deactivated') {
-        return NextResponse.redirect(new URL('/auth/login?error=DeactivatedAccount', request.url))
-      }
-
       if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
-        return NextResponse.redirect(new URL('/onboarding', request.url))
+        return NextResponse.redirect(getUrl('/onboarding'))
       }
 
       if (profile?.role === 'admin') {
-        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+        return NextResponse.redirect(getUrl('/admin/dashboard'))
       }
-      return NextResponse.redirect(new URL('/agent/routes', request.url))
+      return NextResponse.redirect(getUrl('/agent/routes'))
     }
     return response
   }
@@ -65,37 +71,33 @@ export async function middleware(request: NextRequest) {
   // Onboarding path
   if (path.startsWith('/onboarding')) {
     if (!user) {
-      return NextResponse.redirect(new URL('/', request.url))
+      return NextResponse.redirect(getUrl('/'))
     }
     return response
   }
 
   // Protected paths
   if (!user && (path.startsWith('/admin') || path.startsWith('/agent'))) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return NextResponse.redirect(getUrl('/'))
   }
 
   // Role-based path protection
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, first_name, last_name, phone_number, status')
+      .select('role, first_name, last_name, phone_number') // Removed 'status' to be safe
       .eq('id', user.id)
       .single()
 
-    if (profile?.status === 'deactivated') {
-      return NextResponse.redirect(new URL('/auth/login?error=DeactivatedAccount', request.url))
-    }
-
     if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
-       return NextResponse.redirect(new URL('/onboarding', request.url))
+       return NextResponse.redirect(getUrl('/onboarding'))
     }
 
     if (path.startsWith('/admin') && profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/agent/routes', request.url))
+      return NextResponse.redirect(getUrl('/agent/routes'))
     }
     if (path.startsWith('/agent') && profile?.role === 'admin') {
-      return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      return NextResponse.redirect(getUrl('/admin/dashboard'))
     }
   }
 

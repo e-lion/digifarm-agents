@@ -2,51 +2,50 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const { searchParams, origin: requestOrigin } = new URL(request.url)
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || requestOrigin
-  const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/agent/routes'
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
+  const next = requestUrl.searchParams.get('next') ?? '/agent/routes'
+  const origin = requestUrl.origin
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    
-    if (!error) {
-      // Admin Gate Check
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user?.email) {
-        const { data: access } = await supabase
-          .from('profile_access')
-          .select('role, status')
-          .eq('email', user.email)
-          .maybeSingle()
-
-        if (!access || access.status === 'deactivated') {
-          // Identify is not allowed or deactivated
-          await supabase.auth.signOut()
-          const error = !access ? 'UnauthorizedAccess' : 'DeactivatedAccount'
-          return NextResponse.redirect(`${origin}/auth/login?error=${error}`)
-        }
-
-        // Sync profile if needed (idempotent upsert)
-         await supabase.from('profiles').upsert({
-             id: user.id,
-             email: user.email,
-             role: access.role,
-             status: access.status,
-             full_name: user.user_metadata.full_name,
-         })
-         
-         // Redirect based on role
-         if (access.role === 'admin') {
-             return NextResponse.redirect(`${origin}/admin/dashboard`)
-         }
-      }
+    try {
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
       
-      return NextResponse.redirect(`${origin}${next}`)
+      if (!error) {
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        if (user?.email) {
+          const { data: access } = await supabase
+            .from('profile_access')
+            .select('role') // Removed 'status' as it might not exist yet
+            .eq('email', user.email)
+            .maybeSingle()
+
+          if (!access) {
+            await supabase.auth.signOut()
+            return NextResponse.redirect(`${origin}/auth/login?error=UnauthorizedAccess`)
+          }
+
+          // Sync profile
+          await supabase.from('profiles').upsert({
+            id: user.id,
+            email: user.email,
+            role: access.role,
+            full_name: user.user_metadata.full_name,
+          })
+          
+          if (access.role === 'admin') {
+            return NextResponse.redirect(`${origin}/admin/dashboard`)
+          }
+        }
+        
+        return NextResponse.redirect(`${origin}${next}`)
+      }
+    } catch (err) {
+      console.error('Auth callback error:', err)
     }
   }
 
-  // return the user to an error page with instructions
   return NextResponse.redirect(`${origin}/auth/login?error=AuthError`)
 }
