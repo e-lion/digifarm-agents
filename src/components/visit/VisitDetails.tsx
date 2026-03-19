@@ -72,7 +72,7 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
                 getContactDesignations(),
                 supabase
                     .from('visits')
-                    .select('*, buyers:buyer_id(*, buyer_contacts(*))')
+                    .select('*, agent:agent_id(full_name), buyers:buyer_id(*, buyer_contacts(*))')
                     .eq('id', cleanId)
                     .single()
             ])
@@ -209,6 +209,8 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
     )
   }
 
+  const agentName = visit?.agent?.full_name || 'Unknown Agent'
+
   return (
     <>
       <div className="mb-4 flex flex-row items-center justify-between">
@@ -240,6 +242,10 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
         contactDesignations={designations}
         existingContacts={contacts}
         isAdmin={isAdmin}
+        agentName={agentName}
+        completedAt={visit.completed_at || visit.scheduled_date}
+        activityType={visit.activity_type}
+        county={visit.buyers?.county}
       />
     </>
   )

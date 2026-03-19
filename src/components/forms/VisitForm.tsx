@@ -12,11 +12,12 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PhoneInput, isValidPhoneNumber } from '@/components/ui/PhoneInput'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
-import { MapPin, CheckCircle, XCircle, WifiOff, AlertCircle } from 'lucide-react'
+import { MapPin, CheckCircle, XCircle, WifiOff, AlertCircle, Copy, MessageSquare } from 'lucide-react'
 import distance from '@turf/distance'
 import { point } from '@turf/helpers'
 import { updateVisitAction, recordCheckInAction } from '@/lib/actions/visits'
 import { updateBuyerLocation } from '@/lib/actions/buyers'
+import { formatVisitForWhatsApp } from '@/lib/utils'
 
 const formSchema = z.object({
   contact_id: z.string().optional(),
@@ -129,7 +130,11 @@ export default function VisitForm(props: {
   contactDesignations?: string[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   existingContacts?: any[],
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  agentName?: string,
+  completedAt?: string,
+  activityType?: string,
+  county?: string
 }) {
   const {
     visitId,
@@ -143,7 +148,11 @@ export default function VisitForm(props: {
     isLocal,
     contactDesignations = [],
     existingContacts = [],
-    isAdmin = false
+    isAdmin = false,
+    agentName = 'Unknown Agent',
+    completedAt,
+    activityType = 'N/A',
+    county = 'N/A'
   } = props;
 
   const savedCoords = parsePoint(checkInLocation)
@@ -231,20 +240,48 @@ export default function VisitForm(props: {
     return (
       <div className="space-y-6">
         <Card className={`${isAdmin ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
-           <CardContent className="pt-6 flex items-center gap-4">
-              {isAdmin ? (
-                 <AlertCircle className="h-8 w-8 text-blue-600" />
-              ) : (
-                 <CheckCircle className="h-8 w-8 text-green-600" />
-              )}
-              <div>
-                <h3 className={`font-bold ${isAdmin ? 'text-blue-800' : 'text-green-800'}`}>
-                  {isAdmin ? 'Admin Review Mode' : 'Visit Completed'}
-                </h3>
-                <p className={`text-sm ${isAdmin ? 'text-blue-700' : 'text-green-700'}`}>
-                  {isAdmin ? 'You are viewing this visit report in read-only mode.' : 'This visit report has been submitted.'}
-                </p>
+           <CardContent className="pt-6 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {isAdmin ? (
+                   <AlertCircle className="h-8 w-8 text-blue-600" />
+                ) : (
+                   <CheckCircle className="h-8 w-8 text-green-600" />
+                )}
+                <div>
+                  <h3 className={`font-bold ${isAdmin ? 'text-blue-800' : 'text-green-800'}`}>
+                    {isAdmin ? 'Admin Review Mode' : 'Visit Completed'}
+                  </h3>
+                  <p className={`text-sm ${isAdmin ? 'text-blue-700' : 'text-green-700'}`}>
+                    {isAdmin ? 'You are viewing this visit report in read-only mode.' : 'This visit report has been submitted.'}
+                  </p>
+                </div>
               </div>
+
+              {!isAdmin && (
+                <Button 
+                  onClick={() => {
+                    const text = formatVisitForWhatsApp({
+                      agentName,
+                      date: completedAt ? new Date(completedAt).toLocaleDateString() : new Date().toLocaleDateString(),
+                      county,
+                      businessType: initialData?.agsi_business_type || buyerType || 'N/A',
+                      activeFarmers: initialData?.active_farmers || 0,
+                      contactName: initialData?.contact_name || 'N/A',
+                      contactPhone: initialData?.phone || 'N/A',
+                      activityDone: activityType,
+                      notes: initialData?.buyer_feedback || 'N/A'
+                    });
+                    navigator.clipboard.writeText(text);
+                    toast.success("Visit report copied for WhatsApp!");
+                  }}
+                  variant="outline"
+                  className="bg-white border-green-200 text-green-700 hover:bg-green-50 flex items-center gap-2"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Copy for WhatsApp</span>
+                  <Copy className="h-4 w-4 sm:hidden" />
+                </Button>
+              )}
            </CardContent>
         </Card>
 
