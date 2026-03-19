@@ -377,7 +377,8 @@ export async function createBuyer(data: any) {
               name: data.contact_name,
               phone: data.phone,
               designation: data.contact_designation || 'Primary Contact', 
-              created_at: new Date().toISOString()
+              created_at: new Date().toISOString(),
+              organization_id: profile.last_organization_id
           })
       }
 
@@ -400,6 +401,14 @@ export async function updateBuyerContact(buyerId: string, contact: { name: strin
     }
 
     try {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('last_organization_id')
+            .eq('id', user.id)
+            .single()
+
+        if (!profile?.last_organization_id) throw new Error('No organization selected')
+
         // 1. Update the buyer's primary contact info
         const { error: buyerError } = await supabase
             .from('buyers')
@@ -420,7 +429,8 @@ export async function updateBuyerContact(buyerId: string, contact: { name: strin
                 name: contact.name,
                 phone: contact.phone,
                 designation: contact.designation || 'Updated Contact',
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                organization_id: profile.last_organization_id
             })
 
         if (contactError) throw contactError

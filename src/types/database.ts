@@ -70,12 +70,13 @@ export type Database = {
           designation?: string | null
           id?: string
           name?: string
-          organization_id: string
+          organization_id?: string
           phone?: string | null
           updated_at?: string | null
         }
         Relationships: [
-          {\n            foreignKeyName: "buyer_contacts_buyer_id_fkey"
+          {
+            foreignKeyName: "buyer_contacts_buyer_id_fkey"
             columns: ["buyer_id"]
             isOneToOne: false
             referencedRelation: "buyers"
@@ -364,7 +365,7 @@ export type Database = {
           auth_name?: string | null
           auth_srid?: number | null
           proj4text?: string | null
-          srid: number
+          srid?: number
           srtext?: string | null
         }
         Relationships: []
@@ -1287,7 +1288,6 @@ export type Database = {
           xcoordinate: number
           ycoordinate: number
           zcoordinate: number
-          mcoordinate: number
         }
         Returns: unknown
       }
@@ -1557,3 +1557,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

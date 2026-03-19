@@ -69,7 +69,8 @@ export async function createVisitAction(data: {
           buyer_id: savedBuyer.id,
           name: data.contact_name,
           phone: data.contact_phone,
-          designation: data.contact_designation
+          designation: data.contact_designation,
+          organization_id: organizationId
       })
       
       if (contactError) {
@@ -88,7 +89,8 @@ export async function createVisitAction(data: {
     buyer_type: data.buyer_type,
     activity_type: data.activity_type,
     scheduled_date: data.scheduled_date,
-    status: 'planned'
+    status: 'planned',
+    organization_id: organizationId
   }
   const { error: visitError } = await supabase.from('visits').insert(visitData)
 
@@ -104,6 +106,8 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  const { userId, organizationId } = await requireOrganization()
+
   if (!user) {
     return { error: 'You must be logged in' }
   }
@@ -113,7 +117,8 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
     name: buyerName,
     contact_name: data.contact_name,
     phone: data.phone,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    organization_id: organizationId
   }, { onConflict: 'name' })
   .select()
   .single()
@@ -130,7 +135,8 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
            buyer_id: savedBuyer.id,
            name: data.contact_name,
            phone: data.phone,
-           designation: data.contact_designation
+           designation: data.contact_designation,
+           organization_id: organizationId
        })
        
        if (contactError) {
@@ -303,6 +309,7 @@ export async function addBuyerToRouteAction(
     scheduled_date: scheduledDate,
     status: 'planned',
     visit_category: visitCategory,
+    organization_id: buyer.organization_id // Use buyer's org
   }
 
   const { data: newVisit, error: visitError } = await supabase
