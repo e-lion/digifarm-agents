@@ -1,13 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import AdminLayout from '@/components/layout/AdminLayout'
-import DynamicMap from '@/components/map/DynamicMap' // Direct import, DynamicMap handles ssr: false internally
+import DynamicMap from '@/components/map/DynamicMap'
+import { requireOrganization } from '@/lib/actions/organizations'
 
 export default async function GlobalMapPage() {
   const supabase = await createClient()
+  
+  const { organizationId } = await requireOrganization()
 
   const { data: visits } = await supabase
     .from('visits')
     .select('id, buyer_name, check_in_location, status, agent_id, profiles(full_name), buyers(location_lat, location_lng)')
+    .eq('organization_id', organizationId)
   
   // Transform for map
   const mapData = visits?.filter(v => (v.buyers as any)?.location_lat).map(v => {

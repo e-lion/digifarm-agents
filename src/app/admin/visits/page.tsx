@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { VisitsView } from './VisitsView'
+import { requireOrganization } from '@/lib/actions/organizations'
 
 export default async function AdminVisitsPage({
   searchParams,
@@ -25,20 +26,22 @@ export default async function AdminVisitsPage({
     endDate = ''
   } = await searchParams
   const supabase = await createClient()
+  
+  const { organizationId } = await requireOrganization()
 
   const pageSize = 10
   const currentPage = parseInt(page)
   const from = (currentPage - 1) * pageSize
   const to = from + pageSize - 1
 
-  // Fetch unique agents for filtering
+  // Fetch unique agents for this organization
   const { data: agentsData } = await supabase
-    .from('profiles')
-    .select('id, full_name')
-    .in('id', (
-      await supabase.from('visits').select('agent_id')
-    ).data?.map(v => v.agent_id) || [])
-    .order('full_name')
+    .from('organization_members')
+    .select('user_id, profiles(id, full_name)')
+    .eq('organization_id', organizationId)
+    .order('profiles(full_name)')
+
+  const agents = (agentsData || []).map(m => m.profiles as any).filter(Boolean)
 
   let supabaseQuery = supabase
     .from('visits')
@@ -49,6 +52,7 @@ export default async function AdminVisitsPage({
         email
       )
     `, { count: 'exact' })
+    .eq('organization_id', organizationId)
 
   // Apply filters
   if (status !== 'all') {
@@ -118,7 +122,7 @@ export default async function AdminVisitsPage({
         currentCategory={category}
         currentStartDate={startDate}
         currentEndDate={endDate}
-        agents={agentsData || []}
+        agents={agents}
         categories={categories}
       />
     </AdminLayout>

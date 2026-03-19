@@ -3,6 +3,8 @@ import AdminLayout from '@/components/layout/AdminLayout'
 import { AgentsView } from './AgentsView'
 import distance from '@turf/distance'
 import { point } from '@turf/helpers'
+import { requireOrganization } from '@/lib/actions/organizations'
+import { redirect } from 'next/navigation'
 
 // Helper to parse PostGIS Geography point (can be WKT string, GeoJSON object, or EWKB hex)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,15 +80,19 @@ export default async function AgentsPage({
   const startDate = params.startDate || defaultStartDate
   const endDate = params.endDate || defaultEndDate
 
-  // Get current user to exclude self
-  const { data: { user } } = await supabase.auth.getUser()
+  const { organizationId, userId } = await requireOrganization()
 
   const { data: allProfilesData } = await supabase
     .from('profiles')
     .select('*, visits(*, buyers(location_lat, location_lng))')
-    .neq('id', user?.id) // Exclude current user
+    .neq('id', userId)
     .order('full_name', { ascending: true })
+    // Profiles are already filtered by RLS based on last_organization_id
+    // but we can be explicit if we want. For now, RLS handles it.
 
+  // Double check visits filtering in the fetch if possible, 
+  // though RLS on visits table will also handle it.
+  
   const allProfiles = allProfilesData || []
   // Filter for performance view (allows 'agent' AND null roles)
   const agentProfiles = allProfiles.filter(p => p.role !== 'admin')

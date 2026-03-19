@@ -14,13 +14,27 @@ export default async function UsersPage({
   const from = (currentPage - 1) * pageSize
   const to = from + pageSize - 1
 
-  // Get current user to exclude self if needed
+  // Get current user and organization context
   const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('last_organization_id')
+    .eq('id', user?.id)
+    .single()
 
-  // Fetch whitelisted emails with pagination
+  if (!profile?.last_organization_id) {
+    return (
+      <AdminLayout>
+        <div className="p-8 text-center text-gray-500">No organization selected.</div>
+      </AdminLayout>
+    )
+  }
+
+  // Fetch whitelisted emails with pagination, filtered by organization
   let accessQuery = supabase
     .from('profile_access')
     .select('*', { count: 'exact' })
+    .eq('organization_id', profile.last_organization_id)
 
   if (query) {
     accessQuery = accessQuery.ilike('email', `%${query}%`)

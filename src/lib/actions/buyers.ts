@@ -44,11 +44,13 @@ export async function getBuyers(
     if (user) {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('role, counties')
+        .select('role, counties, last_organization_id')
         .eq('id', user.id)
         .single()
       profile = profileData
     }
+
+    if (!profile?.last_organization_id) throw new Error('No organization selected')
 
     // 1. Fetch buyers with their latest visits in a single relational query
     // We use a nested select to grab the relevant visit data directly
@@ -64,6 +66,7 @@ export async function getBuyers(
           profiles(full_name, first_name, last_name, email)
         )
       `, { count: 'exact' })
+      .eq('organization_id', profile.last_organization_id)
       .order('created_at', { ascending: false })
 
     // Apply county filter for agents
@@ -183,16 +186,19 @@ export async function getBuyersList(
   if (user) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('role, counties')
+      .select('role, counties, last_organization_id')
       .eq('id', user.id)
       .single()
     profile = profileData
   }
 
+  if (!profile?.last_organization_id) throw new Error('No organization selected')
+
   // 1. Fetch buyers with location columns
   let query = supabase
     .from('buyers')
     .select('id, name, contact_name, phone, business_type, value_chain, value_chains, county, location_lat, location_lng', { count: 'exact' })
+    .eq('organization_id', profile.last_organization_id)
     .order('name', { ascending: true })
     .range(offset, offset + limit - 1)
 
@@ -329,6 +335,16 @@ export async function createBuyer(data: any) {
     return { success: false, error: 'You must be logged in' }
   }
   
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('last_organization_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.last_organization_id) {
+    return { success: false, error: 'No organization selected' }
+  }
+  
   try {
       // 1. Create the buyer
       // We save to both value_chain (single text, legacy/primary) and value_chains (array)
@@ -346,6 +362,7 @@ export async function createBuyer(data: any) {
               value_chains: data.value_chain || [], 
               location_lat: data.location?.lat,
               location_lng: data.location?.lng,
+              organization_id: profile.last_organization_id,
               created_at: new Date().toISOString()
           })
           .select()

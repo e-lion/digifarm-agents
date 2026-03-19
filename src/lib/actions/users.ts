@@ -14,11 +14,11 @@ export async function toggleAccess(email: string, currentStatus: 'activated' | '
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, last_organization_id')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (profile?.role !== 'admin' || !profile.last_organization_id) {
     throw new Error('Forbidden: Admins only')
   }
 
@@ -29,13 +29,14 @@ export async function toggleAccess(email: string, currentStatus: 'activated' | '
     .from('profile_access')
     .update({ status: newStatus })
     .eq('email', email)
+    .eq('organization_id', profile.last_organization_id)
 
   if (accessError) {
     console.error('Failed to update profile_access status:', accessError)
     throw new Error('Failed to update access status')
   }
 
-  // Also update profile if it exists
+  // Also update profile if it exists (profiles are global but status might be handled)
   const { error: profileError } = await supabase
     .from('profiles')
     .update({ status: newStatus })
@@ -63,18 +64,19 @@ export async function addAgent(formData: FormData) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, last_organization_id')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') {
+  if (profile?.role !== 'admin' || !profile.last_organization_id) {
     throw new Error('Forbidden: Admins only')
   }
 
   const { error } = await supabase.from('profile_access').insert({ 
     email, 
     role,
-    status: 'activated'
+    status: 'activated',
+    organization_id: profile.last_organization_id
   })
   
   if (error) {

@@ -39,66 +39,64 @@ export async function middleware(request: NextRequest) {
 
   const getUrl = (path: string) => {
     const url = new URL(path, request.url)
-    // If we're behind a proxy (like Cloudflare) that's terminating SSL,
-    // we want to ensure our redirects are always HTTPS.
     if (url.hostname !== 'localhost' && !url.hostname.includes('127.0.0.1')) {
       url.protocol = 'https:'
     }
     return url
   }
 
-  // Public paths
-  if (path.startsWith('/auth/login') || path.startsWith('/api/auth') || path === '/') {
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, first_name, last_name, phone_number') // Removed 'status' to be safe
-        .eq('id', user.id)
-        .single()
+  // Define public paths
+  const isAuthPath = path.startsWith('/auth/login') || path.startsWith('/auth/callback') || path.startsWith('/api/auth') || path === '/'
+  const isSetupPath = path.startsWith('/org-setup')
+  const isOnboardingPath = path.startsWith('/onboarding')
 
-      if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
-        return NextResponse.redirect(getUrl('/onboarding'))
-      }
-
-      if (profile?.role === 'admin') {
-        return NextResponse.redirect(getUrl('/admin/dashboard'))
-      }
-      return NextResponse.redirect(getUrl('/agent/routes'))
-    }
-    return response
-  }
-
-  // Onboarding path
-  if (path.startsWith('/onboarding')) {
-    if (!user) {
+  // 1. Unauthenticated users
+  if (!user) {
+    if (!isAuthPath && !isSetupPath && !isOnboardingPath) {
       return NextResponse.redirect(getUrl('/'))
     }
     return response
   }
 
-  // Protected paths
-  if (!user && (path.startsWith('/admin') || path.startsWith('/agent'))) {
+  // 2. Authenticated users
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, first_name, last_name, phone_number, last_organization_id')
+    .eq('id', user.id)
+    .single()
+
+  // 2a. No organization assigned? Redirect to setup (unless already there or public)
+  if (!profile?.last_organization_id && !isSetupPath && !isAuthPath) {
+    return NextResponse.redirect(getUrl('/org-setup'))
+  }
+
+  // 2b. If already has org, don't let them stay on org-setup
+  if (profile?.last_organization_id && isSetupPath) {
     return NextResponse.redirect(getUrl('/'))
   }
 
-  // Role-based path protection
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, first_name, last_name, phone_number') // Removed 'status' to be safe
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
-       return NextResponse.redirect(getUrl('/onboarding'))
-    }
-
-    if (path.startsWith('/admin') && profile?.role !== 'admin') {
-      return NextResponse.redirect(getUrl('/agent/routes'))
-    }
-    if (path.startsWith('/agent') && profile?.role === 'admin') {
+  // 2c. Legacy redirection logic (Login/Root)
+  if (isAuthPath) {
+    if (profile?.role === 'admin') {
       return NextResponse.redirect(getUrl('/admin/dashboard'))
     }
+    return NextResponse.redirect(getUrl('/agent/routes'))
+  }
+
+  // 2d. Role-based agent onboarding
+  if (profile?.role === 'agent' && (!profile.first_name || !profile.last_name || !profile.phone_number)) {
+    if (!isOnboardingPath) {
+      return NextResponse.redirect(getUrl('/onboarding'))
+    }
+    return response
+  }
+
+  // 2e. Role-based path protection
+  if (path.startsWith('/admin') && profile?.role !== 'admin') {
+    return NextResponse.redirect(getUrl('/agent/routes'))
+  }
+  if (path.startsWith('/agent') && profile?.role === 'admin') {
+    return NextResponse.redirect(getUrl('/admin/dashboard'))
   }
 
   return response
@@ -106,13 +104,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - api/ (API routes - generally public or handle their own auth)
-     */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

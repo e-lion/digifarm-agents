@@ -12,10 +12,12 @@ import { Input } from '@/components/ui/Input'
 import { getOfflineReports, getOfflineNewVisits, cachePlannedVisits } from '@/lib/offline-storage'
 import { WifiOff, FileText, Plus, RefreshCw } from 'lucide-react'
 import { RouteEditDialog } from './routes/RouteEditDialog'
+import { useOrganization } from '@/components/providers/OrganizationProvider'
 
 const PAGE_SIZE = 10
 
 export function RouteList() {
+  const { currentOrg } = useOrganization()
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming')
   const [statusFilter, setStatusFilter] = useState<'all' | 'planned' | 'completed'>('all')
   const [dateFilter, setDateFilter] = useState('')
@@ -54,6 +56,7 @@ export function RouteList() {
       .from('visits')
       .select('*')
       .eq('agent_id', userId as string)
+      .eq('organization_id', currentOrg?.id as string)
       .order('status', { ascending: false })
       .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1)
 
@@ -87,10 +90,10 @@ export function RouteList() {
     isFetchingNextPage,
     status
   } = useInfiniteQuery({
-    queryKey: ['visits', userId, activeTab, statusFilter, dateFilter],
+    queryKey: ['visits', userId, currentOrg?.id, activeTab, statusFilter, dateFilter],
     queryFn: fetchVisits,
     initialPageParam: 0,
-    enabled: !!userId,
+    enabled: !!userId && !!currentOrg?.id,
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined
     },

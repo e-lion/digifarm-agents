@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Users, Map as MapIcon, LogOut, ShoppingBag, Activity, ShieldCheck, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { OrgSwitcher } from '@/components/org/OrgSwitcher'
 
 export default function AdminSidebar() {
   const pathname = usePathname()
@@ -20,8 +21,8 @@ export default function AdminSidebar() {
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col fixed inset-y-0 left-0 z-50">
-      <div className="p-6 border-b border-gray-100">
-        <h1 className="text-xl font-bold text-green-700">DigiFarm Admin</h1>
+      <div className="p-4 border-b border-gray-100">
+        <OrgSwitcher />
       </div>
       <nav className="flex-1 p-4 space-y-1">
         {links.map(({ href, label, icon: Icon }) => {

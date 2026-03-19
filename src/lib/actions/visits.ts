@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireOrganization } from './organizations'
 import { Database } from '@/types/database'
 type VisitInsert = Database['public']['Tables']['visits']['Insert']
 type BuyerInsert = Database['public']['Tables']['buyers']['Insert']
@@ -35,9 +36,9 @@ export async function createVisitAction(data: {
   contact_designation: string
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { userId, organizationId } = await requireOrganization()
 
-  if (!user) {
+  if (!userId) {
     return { error: 'You must be logged in' }
   }
 
@@ -51,7 +52,8 @@ export async function createVisitAction(data: {
     county: data.county,
     // Still save primary contact to buyer for quick access
     contact_name: data.contact_name,
-    phone: data.contact_phone
+    phone: data.contact_phone,
+    organization_id: organizationId
   }
   const { data: savedBuyer, error: buyerError } = await supabase
     .from('buyers')
@@ -80,7 +82,7 @@ export async function createVisitAction(data: {
   const visitData: VisitInsert = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     id: data.id as any, // Preserve offline temp ID if provided
-    agent_id: user.id,
+    agent_id: userId,
     buyer_id: savedBuyer.id,
     buyer_name: data.buyer_name,
     buyer_type: data.buyer_type,
@@ -205,22 +207,19 @@ export async function createBulkVisits(visits: {
   visit_category?: string
 }[]) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'You must be logged in' }
-  }
+  const { organizationId, userId } = await requireOrganization()
 
   if (!visits || visits.length === 0) {
     return { error: 'No visits provided' }
   }
 
-  // 1. Fetch details for all selected buyers to get location/types
+  // 1. Fetch details for all selected buyers for this organization
   const buyerIds = visits.map(v => v.buyer_id)
   const { data: buyers, error: buyersError } = await supabase
     .from('buyers')
     .select('*')
     .in('id', buyerIds)
+    .eq('organization_id', organizationId)
 
   if (buyersError) {
     console.error("Error fetching buyers for bulk visit:", buyersError)
@@ -242,14 +241,15 @@ export async function createBulkVisits(visits: {
       if (!buyer) continue
 
       visitsToInsert.push({
-        agent_id: user.id,
+        agent_id: userId,
         buyer_id: buyer.id,
         buyer_name: buyer.name,
         buyer_type: buyer.business_type || 'Unknown',
         activity_type: visit.activity_type,
         scheduled_date: visit.scheduled_date,
         status: 'planned',
-        visit_category: visit.visit_category || 'First Time'
+        visit_category: visit.visit_category || 'First Time',
+        organization_id: organizationId
       })
   }
 
