@@ -9,31 +9,39 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
+    console.log(`Processing auth callback for code: ${code.substring(0, 8)}...`)
     try {
       const { error } = await supabase.auth.exchangeCodeForSession(code)
       
       if (!error) {
+        console.log('Session exchanged successfully')
         const { data: { user } } = await supabase.auth.getUser()
         
         if (user?.email) {
-          const { data: access } = await supabase
+          console.log(`Authenticated user: ${user.email}`)
+          const { data: access, error: accessError } = await supabase
             .from('profile_access')
-            .select('role') // Removed 'status' as it might not exist yet
+            .select('role')
             .eq('email', user.email)
             .maybeSingle()
 
+          if (accessError) console.error('Error fetching profile_access:', accessError)
+
           if (!access) {
+            console.warn(`User ${user.email} not found in profile_access`)
             await supabase.auth.signOut()
             return NextResponse.redirect(`${origin}/auth/login?error=UnauthorizedAccess`)
           }
 
           // Sync profile
-          await supabase.from('profiles').upsert({
+          const { error: upsertError } = await supabase.from('profiles').upsert({
             id: user.id,
             email: user.email,
             role: access.role,
             full_name: user.user_metadata.full_name,
           })
+          
+          if (upsertError) console.error('Error upserting profile:', upsertError)
           
           if (access.role === 'admin') {
             return NextResponse.redirect(`${origin}/admin/dashboard`)
@@ -41,10 +49,14 @@ export async function GET(request: Request) {
         }
         
         return NextResponse.redirect(`${origin}${next}`)
+      } else {
+        console.error('Supabase auth error:', error)
       }
     } catch (err) {
-      console.error('Auth callback error:', err)
+      console.error('Fatal auth callback error:', err)
     }
+  } else {
+    console.warn('No code provided in auth callback')
   }
 
   return NextResponse.redirect(`${origin}/auth/login?error=AuthError`)
