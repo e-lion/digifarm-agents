@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { UsersView } from './UsersView'
+import { getProfile } from '@/lib/auth/get-profile'
 
 export default async function UsersPage({
   searchParams,
@@ -15,12 +16,7 @@ export default async function UsersPage({
   const to = from + pageSize - 1
 
   // Get current user and organization context
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('last_organization_id')
-    .eq('id', user?.id)
-    .single()
+  const { profile } = await getProfile()
 
   if (!profile?.last_organization_id) {
     return (

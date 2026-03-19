@@ -89,6 +89,11 @@ export function SearchableSelect({
                 setOpen(true)
                 setInputValue("") // Clear on focus to allow fresh search
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                }
+              }}
               placeholder={placeholder}
               className="flex h-10 w-full bg-transparent text-base font-medium outline-none placeholder:text-gray-400 border-none focus:ring-0 disabled:cursor-not-allowed"
             />

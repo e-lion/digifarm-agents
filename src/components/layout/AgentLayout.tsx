@@ -11,6 +11,7 @@ export default async function AgentLayout({ children }: { children: React.ReactN
     <OrganizationProvider 
       initialOrg={orgContext?.currentOrg || null} 
       allOrgs={orgContext?.allOrgs || []}
+      userRole={orgContext?.userRole || null}
     >
       <div className="min-h-screen bg-gray-50 pb-20">
         <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-[1001]">

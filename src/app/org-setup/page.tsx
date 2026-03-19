@@ -3,8 +3,10 @@
 import { createOrganization } from '@/lib/actions/organizations'
 import { Loader2, Building2, Plus, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function OrgSetupPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
@@ -16,7 +18,10 @@ export default function OrgSetupPage() {
       const formData = new FormData()
       formData.append('name', name)
       formData.append('slug', slug)
-      await createOrganization(formData)
+      const res = await createOrganization(formData)
+      if (res && res.success) {
+        router.push('/')
+      }
     } catch (error) {
        console.error(error)
        alert('Failed to create organization. Please try a different slug.')

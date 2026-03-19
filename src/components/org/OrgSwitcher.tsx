@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
 export function OrgSwitcher() {
-  const { currentOrg, allOrgs, switchOrg, isPending } = useOrganization()
+  const { currentOrg, allOrgs, userRole, switchOrg, isPending } = useOrganization()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -95,16 +95,18 @@ export function OrgSwitcher() {
             })}
           </div>
 
-          <div className="border-t border-gray-50 mt-2 pt-2 px-2">
-            <Link
-              href="/org-setup"
-              className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-xl transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              <PlusCircle className="w-5 h-5 text-gray-400" />
-              <span>Create New Org</span>
-            </Link>
-          </div>
+          {userRole !== 'agent' && (
+            <div className="border-t border-gray-50 mt-2 pt-2 px-2">
+              <Link
+                href="/org-setup"
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-xl transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <PlusCircle className="w-5 h-5 text-gray-400" />
+                <span>Create New Org</span>
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </div>

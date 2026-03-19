@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { requireOrganization } from './organizations'
 import { Database } from '@/types/database'
+import { visitSchema, visitUpdateSchema, buyerSchema } from '../validations/schemas'
 type VisitInsert = Database['public']['Tables']['visits']['Insert']
 type BuyerInsert = Database['public']['Tables']['buyers']['Insert']
 
@@ -41,6 +42,21 @@ export async function createVisitAction(data: {
   if (!userId) {
     return { error: 'You must be logged in' }
   }
+
+  // 0. Validate Input
+  const validatedVisit = visitSchema.safeParse({ ...data, organization_id: organizationId })
+  const validatedBuyer = buyerSchema.safeParse({ 
+    name: data.buyer_name,
+    business_type: data.buyer_type,
+    value_chains: data.value_chains,
+    county: data.county,
+    contact_name: data.contact_name,
+    phone: data.contact_phone,
+    organization_id: organizationId
+  })
+
+  if (!validatedVisit.success) return { error: validatedVisit.error.issues[0].message }
+  if (!validatedBuyer.success) return { error: validatedBuyer.error.issues[0].message }
 
   // 1. Upsert buyer
   const buyerData: BuyerInsert = {
@@ -104,13 +120,11 @@ export async function createVisitAction(data: {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateVisitAction(visitId: string, buyerName: string, data: any, coords: {lat: number, lng: number} | null) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { userId: user_id, organizationId } = await requireOrganization()
 
-  const { userId, organizationId } = await requireOrganization()
-
-  if (!user) {
-    return { error: 'You must be logged in' }
-  }
+  // 0. Validate Input
+  const validatedData = visitUpdateSchema.safeParse(data)
+  if (!validatedData.success) return { error: validatedData.error.issues[0].message }
 
   // 1. Update buyer contact info (Primary)
   const { data: savedBuyer, error: buyerError } = await supabase.from('buyers').upsert({
@@ -126,8 +140,8 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
   if (buyerError) return { error: buyerError.message }
 
   // 2. Insert/Update buyer contact history if designation is present or just to keep track
-  // Only insert if it's a NEW contact (contact_id is missing or 'new')
-  if (savedBuyer && data.contact_name && (!data.contact_id || data.contact_id === 'new')) {
+  // Only insert if it's a NEW contact (contact_id is missing or 'new' or 'legacy')
+  if (savedBuyer && data.contact_name && (!data.contact_id || data.contact_id === 'new' || data.contact_id === 'legacy')) {
        // Check if this contact already exists to avoid duplicates or just insert new?
        // For simplicity/audit trail, we can insert new if it doesn't exist?
        // Or just insert. Let's insert.
@@ -162,7 +176,7 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
     .from('visits')
     .update(updatePayload)
     .eq('id', visitId)
-    .eq('agent_id', user.id) // Ensure security
+    .eq('agent_id', user_id) // Ensure security
     .select()
 
   if (visitError) return { error: visitError.message }
@@ -176,11 +190,7 @@ export async function updateVisitAction(visitId: string, buyerName: string, data
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function recordCheckInAction(visitId: string, coords: {lat: number, lng: number}) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'You must be logged in' }
-  }
+  const { userId: user_id } = await requireOrganization()
   
   const updateData: any = {
     checked_in_at: new Date().toISOString(),
@@ -191,7 +201,7 @@ export async function recordCheckInAction(visitId: string, coords: {lat: number,
     .from('visits')
     .update(updateData)
     .eq('id', visitId)
-    .eq('agent_id', user.id) // Ensure security
+    .eq('agent_id', user_id) // Ensure security
     .is('checked_in_at', null) // Atomic check-in (prevents multiple check-ins)
     .select()
 
@@ -282,11 +292,7 @@ export async function addBuyerToRouteAction(
   visitCategory: string
 ) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'You must be logged in' }
-  }
+  const { userId: user_id } = await requireOrganization()
 
   // 1. Fetch buyer
   const { data: buyer, error: buyerError } = await supabase
@@ -301,7 +307,7 @@ export async function addBuyerToRouteAction(
 
   // 2. Insert visit
   const visitData: VisitInsert = {
-    agent_id: user.id,
+    agent_id: user_id,
     buyer_id: buyer.id,
     buyer_name: buyer.name,
     buyer_type: buyer.business_type || 'Unknown',
@@ -322,7 +328,7 @@ export async function addBuyerToRouteAction(
 
   // 3. Log to route_audits
   const auditError = await supabase.from('route_audits').insert({
-    agent_id: user.id,
+    agent_id: user_id,
     action: 'add_buyer',
     reason: reason,
     route_date: scheduledDate,
@@ -348,11 +354,7 @@ export async function swapBuyerInRouteAction(
   visitCategory: string
 ) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'You must be logged in' }
-  }
+  const { userId: user_id } = await requireOrganization()
 
   // 1. Fetch existing visit
   const { data: existingVisit, error: fetchVisitError } = await supabase
@@ -397,7 +399,7 @@ export async function swapBuyerInRouteAction(
 
   // 4. Log to route_audits
   const auditError = await supabase.from('route_audits').insert({
-    agent_id: user.id,
+    agent_id: user_id,
     action: 'swap_buyer',
     reason: reason,
     route_date: existingVisit.scheduled_date,

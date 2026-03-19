@@ -1,6 +1,6 @@
 {
-  "name": "DigiFarm Agent",
-  "short_name": "DigiFarm",
+  "name": "DigiFlow Agent",
+  "short_name": "DigiFlow",
   "description": "Mobile-first tool for agricultural sales agents",
   "start_url": "/agent/routes",
   "display": "standalone",

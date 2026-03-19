@@ -14,6 +14,7 @@ interface Organization {
 interface OrganizationContextType {
   currentOrg: Organization | null
   allOrgs: Organization[]
+  userRole: string | null
   isPending: boolean
   switchOrg: (orgId: string) => Promise<void>
 }
@@ -23,11 +24,13 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(u
 export function OrganizationProvider({
   children,
   initialOrg,
-  allOrgs
+  allOrgs,
+  userRole
 }: {
   children: ReactNode
   initialOrg: Organization | null
   allOrgs: Organization[]
+  userRole: string | null
 }) {
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(initialOrg)
   const [isPending, setIsPending] = useState(false)
@@ -51,7 +54,7 @@ export function OrganizationProvider({
   }
 
   return (
-    <OrganizationContext.Provider value={{ currentOrg, allOrgs, isPending, switchOrg: handleSwitch }}>
+    <OrganizationContext.Provider value={{ currentOrg, allOrgs, userRole, isPending, switchOrg: handleSwitch }}>
       {children}
     </OrganizationContext.Provider>
   )

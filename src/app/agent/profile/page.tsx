@@ -1,24 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
-
 import { Button } from '@/components/ui/Button'
 import { LogOut } from 'lucide-react'
 import { redirect } from 'next/navigation'
-
 import ProfileForm from './ProfileForm'
+import { getProfile } from '@/lib/auth/get-profile'
 
 export default async function ProfilePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getProfile()
 
   if (!user) {
     redirect('/auth/login')
   }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('first_name, last_name, phone_number, role, counties')
-    .eq('id', user.id)
-    .single()
 
   if (!profile) {
     redirect('/onboarding')
@@ -48,7 +40,7 @@ export default async function ProfilePage() {
       </form>
 
       <div className="text-center pt-8">
-        <p className="text-xs text-gray-400">DigiFarm Agent PWA v1.0.0</p>
+        <p className="text-xs text-gray-400">DigiFlow Agent PWA v1.0.0</p>
       </div>
     </div>
   )

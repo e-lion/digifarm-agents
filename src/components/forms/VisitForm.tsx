@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
@@ -196,6 +196,14 @@ export default function VisitForm(props: {
       contact_id: selectedContactId
     }
   })
+
+  // Sync selectedContactId when existingContacts loads asynchronously
+  useEffect(() => {
+    if (existingContacts.length > 0 && selectedContactId === 'new' && !initialData?.contact_id) {
+        setSelectedContactId(existingContacts[0].id)
+        setValue('contact_id', existingContacts[0].id)
+    }
+  }, [existingContacts, selectedContactId, initialData, setValue])
 
   // Watch selected contact to toggle UI
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

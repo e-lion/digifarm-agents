@@ -82,7 +82,7 @@ export function PwaInstallPrompt() {
             </div>
             
             <div className="flex-1 pr-6">
-              <h3 className="text-sm font-bold text-gray-900 leading-tight">Install DigiFarm Agent</h3>
+              <h3 className="text-sm font-bold text-gray-900 leading-tight">Install DigiFlow Agent</h3>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                 Install as an app for an easier experience and offline access.
               </p>

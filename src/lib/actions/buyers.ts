@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getProfile } from '@/lib/auth/get-profile'
 
 export interface BuyerWithStats {
   id: string
@@ -39,16 +40,7 @@ export async function getBuyers(
     const to = from + pageSize - 1
 
     // 0. Get user profile for filtering
-    const { data: { user } } = await supabase.auth.getUser()
-    let profile = null
-    if (user) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('role, counties, last_organization_id')
-        .eq('id', user.id)
-        .single()
-      profile = profileData
-    }
+    const { profile } = await getProfile()
 
     if (!profile?.last_organization_id) throw new Error('No organization selected')
 
@@ -181,16 +173,7 @@ export async function getBuyersList(
   const supabase = await createClient()
   
   // 0. Get user profile for filtering
-  const { data: { user } } = await supabase.auth.getUser()
-  let profile = null
-  if (user) {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('role, counties, last_organization_id')
-      .eq('id', user.id)
-      .single()
-    profile = profileData
-  }
+  const { profile } = await getProfile()
 
   if (!profile?.last_organization_id) throw new Error('No organization selected')
 
@@ -329,17 +312,11 @@ export async function getBuyerContacts(buyerId: string) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createBuyer(data: any) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getProfile()
 
   if (!user) {
     return { success: false, error: 'You must be logged in' }
   }
-  
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('last_organization_id')
-    .eq('id', user.id)
-    .single()
 
   if (!profile?.last_organization_id) {
     return { success: false, error: 'No organization selected' }
@@ -394,19 +371,13 @@ export async function createBuyer(data: any) {
 
 export async function updateBuyerContact(buyerId: string, contact: { name: string, phone: string, designation?: string }) {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user, profile } = await getProfile()
 
     if (!user) {
       return { success: false, error: 'You must be logged in' }
     }
 
     try {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('last_organization_id')
-            .eq('id', user.id)
-            .single()
-
         if (!profile?.last_organization_id) throw new Error('No organization selected')
 
         // 1. Update the buyer's primary contact info
@@ -444,7 +415,7 @@ export async function updateBuyerContact(buyerId: string, contact: { name: strin
 // Update buyer location (lat/lng)
 export async function updateBuyerLocation(buyerId: string, lat: number, lng: number) {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getProfile()
 
     if (!user) {
       return { success: false, error: 'You must be logged in' }

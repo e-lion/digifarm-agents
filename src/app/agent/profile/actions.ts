@@ -2,14 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getProfile } from '@/lib/auth/get-profile'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateProfile(prevState: any, formData: FormData) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user } = await getProfile()
 
   if (!user) {
     return { error: 'Unauthorized' }

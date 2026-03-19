@@ -9,8 +9,8 @@ import NextTopLoader from 'nextjs-toploader'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'DigiFarm Agent',
-  description: 'Mobile-first tool for DigiFarm sales agents',
+  title: 'DigiFlow Agent',
+  description: 'Mobile-first tool for DigiFlow sales agents',
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.png',

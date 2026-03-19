@@ -2,21 +2,18 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getProfile } from '@/lib/auth/get-profile'
+import { agentSchema } from '../validations/schemas'
+import { z } from 'zod'
 
 export async function toggleAccess(email: string, currentStatus: 'activated' | 'deactivated') {
   const supabase = await createClient()
 
   // 0. Verify Auth & Admin Role
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getProfile()
   if (!user) {
     throw new Error('Unauthorized')
   }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, last_organization_id')
-    .eq('id', user.id)
-    .single()
 
   if (profile?.role !== 'admin' || !profile.last_organization_id) {
     throw new Error('Forbidden: Admins only')
@@ -52,21 +49,20 @@ export async function toggleAccess(email: string, currentStatus: 'activated' | '
 export async function addAgent(formData: FormData) {
   const email = formData.get('email') as string
   const role = (formData.get('role') as string) || 'agent'
-  if (!email) return
+  
+  // 0. Validate Input
+  const validated = agentSchema.safeParse({ email, role })
+  if (!validated.success) {
+    throw new Error(validated.error.issues[0].message)
+  }
 
   const supabase = await createClient()
 
   // 0. Verify Auth & Admin Role
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getProfile()
   if (!user) {
     throw new Error('Unauthorized')
   }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, last_organization_id')
-    .eq('id', user.id)
-    .single()
 
   if (profile?.role !== 'admin' || !profile.last_organization_id) {
     throw new Error('Forbidden: Admins only')
@@ -88,15 +84,6 @@ export async function addAgent(formData: FormData) {
 }
 
 export async function getCurrentProfile() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
+  const { profile } = await getProfile()
   return profile
 }

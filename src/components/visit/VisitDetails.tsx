@@ -67,12 +67,12 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
             
             // Fetch everything in parallel to eliminate the waterfall
             // 1. Fetch designations
-            // 2. Fetch visit with buyer details and contacts in a single query
+            // 2. Fetch visit with buyer details
             const [designationsData, visitResponse] = await Promise.all([
                 getContactDesignations(),
                 supabase
                     .from('visits')
-                    .select('*, agent:agent_id(full_name), buyers:buyer_id(*, buyer_contacts(*))')
+                    .select('*, agent:agent_id(full_name), buyers:buyer_id(*)')
                     .eq('id', cleanId)
                     .single()
             ])
@@ -82,20 +82,41 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
             const { data: visitData, error: visitError } = visitResponse
             
             if (!visitError && visitData) {
-                // Extract relational data
-                const buyerData = Array.isArray(visitData.buyers) ? visitData.buyers[0] : visitData.buyers
+                // Extract relational data (handling both array and object responses for many-to-one joins)
+                const rawBuyers = visitData.buyers || (visitData as any).buyer_id;
+                const buyerData = Array.isArray(rawBuyers) ? rawBuyers[0] : rawBuyers;
+                
                 if (buyerData) {
-                    const buyerContacts = buyerData.buyer_contacts || []
-                    setContacts(buyerContacts)
-                    
-                    // Attach buyer_id to visit object
-                    visitData.buyer_id = buyerData.id
+                    // Fetch contacts separately for better reliability
+                    const { data: buyerContacts } = await supabase
+                        .from('buyer_contacts')
+                        .select('*')
+                        .eq('buyer_id', typeof buyerData === 'object' ? buyerData.id : buyerData)
+                        .order('created_at', { ascending: false });
 
-                    // If visit_details is empty/null (not completed), fetch buyer details to pre-fill
-                    if (!visitData.visit_details || Object.keys(visitData.visit_details).length === 0) {
-                        visitData.visit_details = {
-                            contact_name: buyerData.contact_name,
-                            phone: buyerData.phone
+                    let finalContacts = buyerContacts || [];
+                    
+                    if (finalContacts.length === 0 && typeof buyerData === 'object' && buyerData.contact_name) {
+                        finalContacts = [{
+                            id: 'legacy',
+                            name: buyerData.contact_name,
+                            phone: buyerData.phone || '',
+                            designation: 'Primary Contact'
+                        }];
+                    }
+
+                    setContacts(finalContacts);
+                    
+                    // Attach buyer_id to visit object (useful for updates)
+                    visitData.buyer_id = typeof buyerData === 'object' ? buyerData.id : buyerData;
+
+                    if (typeof buyerData === 'object') {
+                        // If visit_details is empty/null (not completed), fetch buyer details to pre-fill
+                        if (!visitData.visit_details || Object.keys(visitData.visit_details).length === 0) {
+                            visitData.visit_details = {
+                                contact_name: buyerData.contact_name,
+                                phone: buyerData.phone
+                            };
                         }
                     }
                 }

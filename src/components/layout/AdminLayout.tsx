@@ -12,11 +12,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <OrganizationProvider 
       initialOrg={orgContext?.currentOrg || null} 
       allOrgs={orgContext?.allOrgs || []}
+      userRole={orgContext?.userRole || null}
     >
       <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
         {/* Mobile Top Header */}
         <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-          <h1 className="text-lg font-bold text-green-700">DigiFarm Admin</h1>
+          <h1 className="text-lg font-bold text-green-700">DigiFlow Admin</h1>
           <form action="/auth/signout" method="post">
             <button className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors" aria-label="Sign Out">
               <LogOut className="h-5 w-5" />

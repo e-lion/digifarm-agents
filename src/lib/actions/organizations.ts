@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getProfile } from '@/lib/auth/get-profile'
 
 export async function createOrganization(formData: FormData) {
   const name = formData.get('name') as string
@@ -13,7 +14,7 @@ export async function createOrganization(formData: FormData) {
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getProfile()
 
   if (!user) throw new Error('Unauthorized')
 
@@ -54,12 +55,12 @@ export async function createOrganization(formData: FormData) {
     .eq('id', user.id)
 
   revalidatePath('/')
-  redirect('/')
+  return { success: true }
 }
 
 export async function switchOrganization(orgId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getProfile()
   if (!user) throw new Error('Unauthorized')
 
   // Verify membership
@@ -83,17 +84,11 @@ export async function switchOrganization(orgId: string) {
 
 export async function getOrganizationContext() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getProfile()
   if (!user) return null
 
-  // 1. Get current profile for last_organization_id
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('last_organization_id')
-    .eq('id', user.id)
-    .single()
-
-  // 2. Get all organization memberships
+  // 1. Get all organization memberships
+  // (Membership sync is handled by database triggers on signup and profile_access update)
   const { data: memberships } = await supabase
     .from('organization_members')
     .select('organization_id, organizations(id, name, slug)')
@@ -102,19 +97,12 @@ export async function getOrganizationContext() {
   const allOrgs = (memberships || []).map(m => m.organizations as any).filter(Boolean)
   const currentOrg = allOrgs.find(o => o.id === profile?.last_organization_id) || null
 
-  return { currentOrg, allOrgs }
+  return { currentOrg, allOrgs, userRole: profile?.role || null }
 }
 
 export async function requireOrganization() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, profile } = await getProfile()
   if (!user) redirect('/auth/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('last_organization_id, role')
-    .eq('id', user.id)
-    .single()
 
   if (!profile?.last_organization_id) {
     redirect('/org-setup')

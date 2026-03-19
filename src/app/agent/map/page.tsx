@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import Map from '@/components/map/DynamicMap' // Use DynamicMap to avoid SSR issues
-
+import { getProfile } from '@/lib/auth/get-profile'
 
 export default async function AgentMapPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getProfile()
 
   const { data: visits } = await supabase
     .from('visits')
