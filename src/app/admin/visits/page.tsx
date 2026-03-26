@@ -34,14 +34,24 @@ export default async function AdminVisitsPage({
   const from = (currentPage - 1) * pageSize
   const to = from + pageSize - 1
 
-  // Fetch unique agents for this organization
-  const { data: agentsData } = await supabase
+  // Fetch unique agents for this organization via organization_members
+  const { data: memberData } = await supabase
     .from('organization_members')
-    .select('user_id, profiles(id, full_name)')
+    .select('user_id')
     .eq('organization_id', organizationId)
-    .order('profiles(full_name)')
 
-  const agents = (agentsData || []).map(m => m.profiles as any).filter(Boolean)
+  const userIds = (memberData || []).map(m => m.user_id)
+
+  const { data: profilesData } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .in('id', userIds)
+    .order('full_name')
+
+  const agents = (profilesData || []).map(p => ({
+    id: p.id,
+    full_name: p.full_name || 'Unnamed Agent'
+  }))
 
   let supabaseQuery = supabase
     .from('visits')
