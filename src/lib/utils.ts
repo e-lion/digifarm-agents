@@ -12,16 +12,19 @@ export function formatVisitForWhatsApp(data: {
   businessType: string;
   activeFarmers: number | string;
   contactName: string;
+  designation?: string;
   contactPhone: string;
   activityDone: string;
   notes: string;
 }) {
-  return `BRD Name: ${data.agentName || '-'}
-Date: ${data.date || '-'}
-County: ${data.county || '-'}
-Category of Business: ${data.businessType || '-'}
-Active Farmers: ${data.activeFarmers ?? '-'}
-Contact Person: ${data.contactName || '-'} & ${data.contactPhone || '-'}
-Activity Done: ${data.activityDone || '-'}
-Feedback / Visit Notes: ${data.notes || '-'}`;
+  return `*BDR Name:* ${data.agentName || '-'}
+*Date:* ${data.date || '-'}
+*County:* ${data.county || '-'}
+*Category of Business:* ${data.businessType || '-'}
+*Active Farmers:* ${data.activeFarmers ?? '-'}
+*Contact Person:* ${data.contactName || '-'}
+*Designation:* ${data.designation || '-'}
+*Contact:* ${data.contactPhone || '-'}
+*Activity Done:* ${data.activityDone || '-'}
+*Feedback / Visit Notes:* ${data.notes || '-'}`;
 }

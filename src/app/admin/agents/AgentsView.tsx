@@ -4,7 +4,10 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Calendar, MapPin, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Calendar, MapPin, CheckCircle, Clock, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { toggleAgentVisibility } from "@/lib/actions/users";
+import { toast } from "sonner";
+import { useTransition } from "react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +48,7 @@ interface AgentMetrics {
   verifiedVisits: number;
   completionRate: number;
   visits: Visit[];
+  hidden: boolean;
 }
 
 interface AgentsViewProps {
@@ -69,6 +73,8 @@ export function AgentsView({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
+  const [showHidden, setShowHidden] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const handleDateChange = (type: "start" | "end", value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -114,6 +120,20 @@ export function AgentsView({
     document.body.removeChild(link);
   };
 
+  const onToggleVisibility = (agentId: string, currentHidden: boolean) => {
+    startTransition(async () => {
+      try {
+        await toggleAgentVisibility(agentId, currentHidden);
+        toast.success(currentHidden ? "Agent unhidden" : "Agent hidden");
+      } catch (e) {
+        console.error(e);
+        toast.error("Failed to update visibility");
+      }
+    });
+  };
+
+  const filteredAgents = agentsWithMetrics.filter(agent => (agent.hidden ?? false) === showHidden);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row justify-end items-start xl:items-center gap-4">
@@ -147,6 +167,25 @@ export function AgentsView({
           >
             Export CSV
           </Button>
+
+          <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
+            <Button
+              variant={!showHidden ? "primary" : "ghost"}
+              size="sm"
+              onClick={() => setShowHidden(false)}
+              className="h-8 text-xs"
+            >
+              Active
+            </Button>
+            <Button
+              variant={showHidden ? "primary" : "ghost"}
+              size="sm"
+              onClick={() => setShowHidden(true)}
+              className="h-8 text-xs"
+            >
+              Hidden
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -156,9 +195,9 @@ export function AgentsView({
         </CardHeader>
         <CardContent className="px-0">
           <div className="space-y-4">
-            {(agentsWithMetrics?.length || 0) > 0 ? (
+            {(filteredAgents?.length || 0) > 0 ? (
               <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-                {agentsWithMetrics?.map((agent, index) => (
+                {filteredAgents?.map((agent, index) => (
                   <div
                     key={agent?.id || `agent-${index}`}
                     className="group flex flex-col p-4 rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-200"
@@ -181,6 +220,14 @@ export function AgentsView({
                       >
                         {agent.completionRate}% Done
                       </div>
+                      <button
+                        onClick={() => onToggleVisibility(agent.id, agent.hidden)}
+                        disabled={isPending}
+                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                        title={agent.hidden ? "Unhide Agent" : "Hide Agent"}
+                      >
+                        {agent.hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      </button>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 mb-4 text-center">
@@ -393,7 +440,7 @@ export function AgentsView({
               </div>
             ) : (
               <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                <p>No active agents found with profiles.</p>
+                <p>{showHidden ? "No hidden agents found." : "No active agents found."}</p>
               </div>
             )}
           </div>

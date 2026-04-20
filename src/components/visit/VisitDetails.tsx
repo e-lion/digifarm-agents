@@ -115,7 +115,8 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
                         if (!visitData.visit_details || Object.keys(visitData.visit_details).length === 0) {
                             visitData.visit_details = {
                                 contact_name: buyerData.contact_name,
-                                phone: buyerData.phone
+                                phone: buyerData.phone,
+                                contact_designation: finalContacts.find(c => c.name === buyerData.contact_name)?.designation || finalContacts[0]?.designation || ''
                             };
                         }
                     }

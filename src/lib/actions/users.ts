@@ -87,3 +87,34 @@ export async function getCurrentProfile() {
   const { profile } = await getProfile()
   return profile
 }
+
+export async function toggleAgentVisibility(agentId: string, currentHidden: boolean) {
+  const supabase = await createClient()
+
+  // 0. Verify Auth & Admin Role
+  const { user, profile } = await getProfile()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  if (profile?.role !== 'admin' || !profile.last_organization_id) {
+    throw new Error('Forbidden: Admins only')
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ hidden: !Boolean(currentHidden) })
+    .eq('id', agentId)
+
+  if (error) {
+    console.error('SUPABASE ERROR in toggleAgentVisibility:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    })
+    throw new Error(`Failed to update visibility: ${error.message}`)
+  }
+
+  revalidatePath('/admin/agents')
+}

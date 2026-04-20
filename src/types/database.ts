@@ -309,6 +309,7 @@ export type Database = {
           phone_number: string | null
           role: string
           status: string | null
+          hidden: boolean
         }
         Insert: {
           counties?: string[] | null
@@ -322,6 +323,7 @@ export type Database = {
           phone_number?: string | null
           role: string
           status?: string | null
+          hidden?: boolean
         }
         Update: {
           counties?: string[] | null
@@ -335,6 +337,7 @@ export type Database = {
           phone_number?: string | null
           role?: string
           status?: string | null
+          hidden?: boolean
         }
         Relationships: [
           {

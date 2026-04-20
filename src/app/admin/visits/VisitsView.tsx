@@ -24,6 +24,12 @@ interface Visit {
   feedback?: string
   active_farmers?: number
   activity_type?: string
+  value_chains?: string[]
+  county?: string
+  location?: string
+  contact_name?: string
+  contact_phone?: string
+  contact_designation?: string
 }
 
 interface VisitsViewProps {
@@ -111,7 +117,7 @@ export function VisitsView({
             endDate: currentEndDate
         })
         
-        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Reason', 'Active Farmers', 'Status', 'Feedback']
+        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Reason', 'Active Farmers', 'Status', 'Value Chain', 'County/Location', 'Contact Person', 'Feedback']
         const csvContent = [
             headers.join(','),
             ...allVisits.map(v => [
@@ -124,6 +130,9 @@ export function VisitsView({
                 v.activity_type || 'Unspecified',
                 v.active_farmers || 0,
                 v.status,
+                `"${(v.value_chains || []).join('; ')}"`,
+                `"${v.county || 'N/A'}${v.location !== 'N/A' ? ` (${v.location})` : ''}"`,
+                `"${v.contact_name || 'N/A'} (${v.contact_designation || 'N/A'}) - ${v.contact_phone || 'N/A'}"`,
                 `"${(v.feedback || '').replace(/"/g, '""')}"`
             ].join(','))
         ].join('\n')

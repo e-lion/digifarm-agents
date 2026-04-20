@@ -60,6 +60,12 @@ export default async function AdminVisitsPage({
       agent:profiles!visits_agent_id_fkey (
         full_name,
         email
+      ),
+      buyer:buyers (
+        value_chains,
+        county,
+        location_lat,
+        location_lng
       )
     `, { count: 'exact' })
     .eq('organization_id', organizationId)
@@ -100,6 +106,7 @@ export default async function AdminVisitsPage({
 
   const visits = (visitsData || []).map(v => {
     const agent = v.agent as unknown as { full_name: string | null, email: string } | null
+    const buyer = (v as any).buyer as any
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const details = v.visit_details as any
     return {
@@ -108,7 +115,15 @@ export default async function AdminVisitsPage({
       agent_email: agent?.email || 'Unknown Email',
       actual_date: v.checked_in_at,
       feedback: details?.buyer_feedback || null,
-      active_farmers: details?.active_farmers || 0
+      active_farmers: details?.active_farmers || 0,
+      
+      // New fields for export (and potentially table display)
+      value_chains: buyer?.value_chains || [],
+      county: buyer?.county || 'N/A',
+      location: buyer?.location_lat ? `${buyer.location_lat}, ${buyer.location_lng}` : 'N/A',
+      contact_name: details?.contact_name || 'N/A',
+      contact_phone: details?.phone || 'N/A',
+      contact_designation: details?.contact_designation || 'N/A'
     }
   })
 

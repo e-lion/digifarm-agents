@@ -219,11 +219,12 @@ export default function VisitForm(props: {
           setValue('phone', '')
           setValue('contact_designation', '')
       } else {
-           // Clear fields so validaton doesn't get confused, 
-           // but technically we don't validate them if contact_id != 'new'
-           setValue('contact_name', '')
-           setValue('phone', '')
-           setValue('contact_designation', '')
+          const contact = existingContacts.find((c: any) => c.id === contactId)
+          if (contact) {
+              setValue('contact_name', contact.name)
+              setValue('phone', contact.phone)
+              setValue('contact_designation', contact.designation || '')
+          }
       }
   }
 
@@ -275,6 +276,7 @@ export default function VisitForm(props: {
                       businessType: initialData?.agsi_business_type || buyerType || 'N/A',
                       activeFarmers: initialData?.active_farmers || 0,
                       contactName: initialData?.contact_name || 'N/A',
+                      designation: initialData?.contact_designation || '',
                       contactPhone: initialData?.phone || 'N/A',
                       activityDone: activityType,
                       notes: initialData?.buyer_feedback || 'N/A'
