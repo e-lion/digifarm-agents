@@ -170,7 +170,7 @@ export function AgentsView({
 
           <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
             <Button
-              variant={!showHidden ? "primary" : "ghost"}
+              variant={!showHidden ? "primary" : "secondary"}
               size="sm"
               onClick={() => setShowHidden(false)}
               className="h-8 text-xs"
@@ -178,7 +178,7 @@ export function AgentsView({
               Active
             </Button>
             <Button
-              variant={showHidden ? "primary" : "ghost"}
+              variant={showHidden ? "primary" : "secondary"}
               size="sm"
               onClick={() => setShowHidden(true)}
               className="h-8 text-xs"
