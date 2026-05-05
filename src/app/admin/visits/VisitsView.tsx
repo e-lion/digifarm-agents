@@ -117,7 +117,7 @@ export function VisitsView({
             endDate: currentEndDate
         })
         
-        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Reason', 'Active Farmers', 'Status', 'Value Chain', 'County/Location', 'Contact Person', 'Feedback']
+        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Reason', 'Active Farmers', 'Status', 'Value Chain', 'County/Location', 'Contact Name', 'Contact Designation', 'Contact Phone Number', 'Feedback']
         const csvContent = [
             headers.join(','),
             ...allVisits.map(v => [
@@ -132,7 +132,9 @@ export function VisitsView({
                 v.status,
                 `"${(v.value_chains || []).join('; ')}"`,
                 `"${v.county || 'N/A'}${v.location !== 'N/A' ? ` (${v.location})` : ''}"`,
-                `"${v.contact_name || 'N/A'} (${v.contact_designation || 'N/A'}) - ${v.contact_phone || 'N/A'}"`,
+                `"${v.contact_name || 'N/A'}"`,
+                `"${v.contact_designation || 'N/A'}"`,
+                `"${v.contact_phone || 'N/A'}"`,
                 `"${(v.feedback || '').replace(/"/g, '""')}"`
             ].join(','))
         ].join('\n')
