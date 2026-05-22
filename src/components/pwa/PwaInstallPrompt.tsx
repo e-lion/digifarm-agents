@@ -19,10 +19,7 @@ export function PwaInstallPrompt() {
 
     // 2. Check if we should hide it (dismissed recently)
     const lastDismissed = localStorage.getItem('pwa_prompt_dismissed')
-    if (lastDismissed) {
-      const diff = Date.now() - parseInt(lastDismissed)
-      if (diff < 7 * 24 * 60 * 60 * 1000) return // Hide for 7 days
-    }
+    if (lastDismissed) return // Hide permanently once dismissed
 
     // 3. Platform detection
     const userAgent = window.navigator.userAgent.toLowerCase()
