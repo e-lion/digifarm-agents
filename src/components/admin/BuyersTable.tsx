@@ -60,14 +60,13 @@ export default function BuyersTable({
         const { buyers: allBuyers } = await getBuyers(1, 10000, currentSearch)
         
         // CSV Export
-        const headers = ['Name', 'Created At', 'Contact Name', 'Phone', 'Value Chain', 'Business Type', 'County', 'Agent Names', 'Number of Engagements', 'Last Visited Date']
+        const headers = ['Name', 'Created At', 'Contact Name', 'Value Chain', 'Business Type', 'County', 'Agent Names', 'Number of Engagements', 'Last Visited Date']
         const csvContent = [
         headers.join(','),
         ...allBuyers.map(b => [
             `"${b.name}"`,
             b.created_at ? new Date(b.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '',
             `"${b.contact_name || ''}"`,
-            `"${b.phone || ''}"`,
             `"${b.value_chain || ''}"`,
             `"${b.business_type || ''}"`,
             `"${b.county || ''}"`,
@@ -171,10 +170,6 @@ export default function BuyersTable({
                         <div className="flex items-center gap-2 text-gray-900 font-medium whitespace-nowrap">
                             <User className="h-3 w-3 text-gray-400" />
                             {buyer.contact_name || '-'}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                            <Phone className="h-3 w-3" />
-                            {buyer.phone || '-'}
                         </div>
                       </div>
                     </td>

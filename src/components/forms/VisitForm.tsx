@@ -10,7 +10,6 @@ import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { PhoneInput, isValidPhoneNumber } from '@/components/ui/PhoneInput'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { MapPin, CheckCircle, XCircle, WifiOff, AlertCircle, Copy, MessageSquare } from 'lucide-react'
 import distance from '@turf/distance'
@@ -38,13 +37,6 @@ const formSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "Name is required for new contact",
                 path: ["contact_name"]
-            })
-        }
-        if (!data.phone || !isValidPhoneNumber(data.phone)) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Valid phone number is required",
-                path: ["phone"]
             })
         }
     }
@@ -277,7 +269,6 @@ export default function VisitForm(props: {
                       activeFarmers: initialData?.active_farmers || 0,
                       contactName: initialData?.contact_name || 'N/A',
                       designation: initialData?.contact_designation || '',
-                      contactPhone: initialData?.phone || 'N/A',
                       activityDone: activityType,
                       notes: initialData?.buyer_feedback || 'N/A'
                     });
@@ -330,10 +321,6 @@ export default function VisitForm(props: {
                 <div>
                    <label className="text-xs text-gray-500 uppercase">Contact</label>
                    <p className="font-medium">{initialData.contact_name || '-'}</p>
-                </div>
-                <div>
-                   <label className="text-xs text-gray-500 uppercase">Phone</label>
-                   <p className="font-medium">{initialData.phone || '-'}</p>
                 </div>
                  <div>
                    <label className="text-xs text-gray-500 uppercase">Designation</label>
@@ -779,8 +766,6 @@ export default function VisitForm(props: {
                                                 <p className={`font-bold ${selectedContactId === c.id ? 'text-green-900' : 'text-gray-900'}`}>{c.name}</p>
                                                 <p className="text-sm text-gray-500 flex items-center gap-2">
                                                     <span>{c.designation || 'No Role'}</span>
-                                                    <span>•</span>
-                                                    <span>{c.phone}</span>
                                                 </p>
                                             </div>
                                             {selectedContactId === c.id && <CheckCircle className="h-5 w-5 text-green-600" />}
@@ -812,25 +797,9 @@ export default function VisitForm(props: {
                   {(!existingContacts?.length || selectedContactId === 'new') && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 animate-in fade-in slide-in-from-top-2 border-t border-gray-100 mt-2">
                            <div>
-                            <label className="text-sm font-medium text-gray-700">Contact Name <span className="text-red-500">*</span></label>
-                            <Input {...register('contact_name')} placeholder="e.g. John Doe" />
+                            <label className="text-sm font-medium text-gray-700">Contact First Name <span className="text-red-500">*</span></label>
+                            <Input {...register('contact_name')} placeholder="e.g. John" />
                             {errors.contact_name && <p className="text-xs text-red-500 mt-1">{errors.contact_name.message}</p>}
-                          </div>
-
-                          <div>
-                            <label className="text-sm font-medium text-gray-700">Phone <span className="text-red-500">*</span></label>
-                            <Controller
-                              name="phone"
-                              control={control}
-                              render={({ field }) => (
-                                <PhoneInput 
-                                  value={field.value || ''} 
-                                  onChange={field.onChange}
-                                  placeholder="Enter phone number"
-                                  error={errors.phone?.message}
-                                />
-                              )}
-                            />
                           </div>
 
                           <div className="md:col-span-2">

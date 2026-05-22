@@ -36,19 +36,6 @@ export function BuyerCard({ buyer, onEdit }: BuyerCardProps) {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    {buyer.phone ? (
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-9 w-9 p-0 rounded-full border-green-200 text-green-600 hover:bg-green-50"
-                            onClick={() => window.open(`tel:${buyer.phone}`)}
-                        >
-                            <Phone className="h-4 w-4" />
-                        </Button>
-                    ) : (
-                         <div className="h-9 w-9" /> 
-                    )}
-                    
                     <Button 
                         variant="outline" 
                         size="sm" 

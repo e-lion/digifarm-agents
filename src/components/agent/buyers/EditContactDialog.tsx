@@ -9,14 +9,12 @@ import { updateBuyerContact, getContactDesignations, BuyerOption } from '@/lib/a
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { PhoneInput, isValidPhoneNumber } from '@/components/ui/PhoneInput'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { toast } from 'sonner'
 import { User } from 'lucide-react'
 
 const formSchema = z.object({
   contact_name: z.string().min(2, 'Name is required'),
-  phone: z.string().refine((val) => isValidPhoneNumber(val), { message: 'Invalid phone number' }),
   designation: z.string().optional()
 })
 
@@ -36,7 +34,6 @@ export function EditContactDialog({ buyer, open, onOpenChange }: EditContactDial
         resolver: zodResolver(formSchema),
         defaultValues: {
             contact_name: '',
-            phone: '',
             designation: ''
         }
     })
@@ -45,7 +42,6 @@ export function EditContactDialog({ buyer, open, onOpenChange }: EditContactDial
         if (buyer && open) {
             reset({
                 contact_name: buyer.contact_name || '',
-                phone: buyer.phone || '',
                 designation: buyer.contact_designation || ''
             })
         }
@@ -54,7 +50,7 @@ export function EditContactDialog({ buyer, open, onOpenChange }: EditContactDial
     const mutation = useMutation({
         mutationFn: (data: FormValues) => updateBuyerContact(buyer!.id, {
             name: data.contact_name,
-            phone: data.phone,
+            phone: buyer!.phone || '',
             designation: data.designation
         }),
         onSuccess: (result) => {
@@ -88,28 +84,12 @@ export function EditContactDialog({ buyer, open, onOpenChange }: EditContactDial
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
                     <div>
-                        <label className="text-sm font-medium text-gray-700">Contact Name</label>
+                        <label className="text-sm font-medium text-gray-700">Contact First Name</label>
                         <div className="relative mt-1">
                             <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                            <Input {...register('contact_name')} placeholder="e.g. John Doe" className="pl-9" />
+                            <Input {...register('contact_name')} placeholder="e.g. John" className="pl-9" />
                         </div>
                         {errors.contact_name && <p className="text-xs text-red-500 mt-1">{errors.contact_name.message}</p>}
-                    </div>
-
-                    <div>
-                        <label className="text-sm font-medium text-gray-700">Phone</label>
-                        <Controller
-                            name="phone"
-                            control={control}
-                            render={({ field }) => (
-                                <PhoneInput
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    placeholder="Enter phone number"
-                                    error={errors.phone?.message}
-                                />
-                            )}
-                        />
                     </div>
 
                     <div>

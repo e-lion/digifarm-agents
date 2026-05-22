@@ -45,8 +45,6 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
                     ...draft,
                     isLocal: true,
                     visit_details: draft.visit_details || {
-                        contact_name: draft.contact_name,
-                        phone: draft.contact_phone, // Note: CreateVisitForm uses contact_phone, VisitForm uses phone
                         contact_designation: draft.contact_designation,
                         active_farmers: draft.active_farmers,
                         is_potential_customer: draft.is_potential_customer,
@@ -100,7 +98,6 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
                         finalContacts = [{
                             id: 'legacy',
                             name: buyerData.contact_name,
-                            phone: buyerData.phone || '',
                             designation: 'Primary Contact'
                         }];
                     }
@@ -115,7 +112,6 @@ export function VisitDetails({ id, isAdmin = false }: { id: string, isAdmin?: bo
                         if (!visitData.visit_details || Object.keys(visitData.visit_details).length === 0) {
                             visitData.visit_details = {
                                 contact_name: buyerData.contact_name,
-                                phone: buyerData.phone,
                                 contact_designation: finalContacts.find(c => c.name === buyerData.contact_name)?.designation || finalContacts[0]?.designation || ''
                             };
                         }

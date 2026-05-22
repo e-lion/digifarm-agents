@@ -6,7 +6,7 @@ export const buyerSchema = z.object({
   value_chains: z.array(z.string()).optional().default([]),
   county: z.string().min(1, "County is required"),
   contact_name: z.string().min(2, "Contact name is required"),
-  phone: z.string().min(10, "Valid phone number is required"),
+  phone: z.string().optional().nullable(),
   organization_id: z.string().uuid().optional(),
 })
 
@@ -29,7 +29,7 @@ export const agentSchema = z.object({
 
 export const visitUpdateSchema = z.object({
   contact_name: z.string().min(2),
-  phone: z.string().min(10),
+  phone: z.string().optional().nullable(),
   contact_designation: z.string().optional(),
   buyer_feedback: z.string().optional(),
   active_farmers: z.number().optional().default(0),

@@ -13,7 +13,6 @@ export function formatVisitForWhatsApp(data: {
   activeFarmers: number | string;
   contactName: string;
   designation?: string;
-  contactPhone: string;
   activityDone: string;
   notes: string;
 }) {
@@ -24,7 +23,6 @@ export function formatVisitForWhatsApp(data: {
 *Active Farmers:* ${data.activeFarmers ?? '-'}
 *Contact Person:* ${data.contactName || '-'}
 *Designation:* ${data.designation || '-'}
-*Contact:* ${data.contactPhone || '-'}
 *Activity Done:* ${data.activityDone || '-'}
 *Feedback / Visit Notes:* ${data.notes || '-'}`;
 }

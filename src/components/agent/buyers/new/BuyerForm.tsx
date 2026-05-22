@@ -15,7 +15,6 @@ import { getCurrentProfile } from "@/lib/actions/users";
 import { kenyaCounties } from "@/lib/constants/counties";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { PhoneInput, isValidPhoneNumber } from "@/components/ui/PhoneInput";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { User, MapPin, Briefcase } from "lucide-react";
@@ -46,12 +45,6 @@ const formSchema = z.object({
     })
     .optional(),
   contact_name: z.string().optional(),
-  phone: z
-    .string()
-    .refine((val) => !val || isValidPhoneNumber(val), {
-      message: "Invalid phone number",
-    })
-    .optional(),
   contact_designation: z.string().optional(),
 });
 
@@ -98,7 +91,6 @@ export function BuyerForm() {
       county: "",
       value_chain: [],
       contact_name: "",
-      phone: "",
       contact_designation: "",
     },
   });
@@ -263,33 +255,15 @@ export function BuyerForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700">
-                Contact Name
+                Contact First Name
               </label>
               <Input
                 {...register("contact_name")}
-                placeholder="e.g. John Doe"
+                placeholder="e.g. John"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700">
-                Phone Number
-              </label>
-              <Controller
-                name="phone"
-                control={control}
-                render={({ field }) => (
-                  <PhoneInput
-                    value={field.value || ""}
-                    onChange={field.onChange}
-                    placeholder="Enter phone number"
-                    error={errors.phone?.message}
-                  />
-                )}
-              />
-            </div>
-
-            <div className="md:col-span-2">
               <label className="text-sm font-medium text-gray-700">
                 Designation
               </label>
