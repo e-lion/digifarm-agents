@@ -122,8 +122,8 @@ export function VisitsView({
             headers.join(','),
             ...allVisits.map(v => [
                 `"${v.buyer_name}"`,
-                v.scheduled_date ? new Date(v.scheduled_date).toLocaleDateString() : '',
-                v.actual_date ? new Date(v.actual_date).toLocaleDateString() : '',
+                v.scheduled_date ? `"${new Date(v.scheduled_date).toLocaleString()}"` : '',
+                v.actual_date ? `"${new Date(v.actual_date).toLocaleString()}"` : '',
                 `"${v.agent_name}"`,
                 v.agent_email,
                 v.visit_category || 'General',
