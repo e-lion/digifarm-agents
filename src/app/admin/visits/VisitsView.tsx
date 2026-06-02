@@ -21,6 +21,8 @@ interface Visit {
   agent_name: string
   agent_email: string
   actual_date?: string
+  visit_start_time?: string
+  visit_end_time?: string
   feedback?: string
   active_farmers?: number
   activity_type?: string
@@ -117,13 +119,15 @@ export function VisitsView({
             endDate: currentEndDate
         })
         
-        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Agent Name', 'Agent Email', 'Category', 'Reason', 'Active Farmers', 'Status', 'Value Chain', 'County/Location', 'Contact First Name', 'Contact Designation', 'Feedback']
+        const headers = ['Buyer Name', 'Scheduled Date', 'Actual Date', 'Visit Start Time', 'Visit End Time', 'Agent Name', 'Agent Email', 'Category', 'Reason', 'Active Farmers', 'Status', 'Value Chain', 'County/Location', 'Contact First Name', 'Contact Designation', 'Feedback']
         const csvContent = [
             headers.join(','),
             ...allVisits.map(v => [
                 `"${v.buyer_name}"`,
                 v.scheduled_date ? `"${new Date(v.scheduled_date).toLocaleString()}"` : '',
                 v.actual_date ? `"${new Date(v.actual_date).toLocaleString()}"` : '',
+                v.visit_start_time ? `"${new Date(v.visit_start_time).toLocaleString()}"` : '',
+                v.visit_end_time ? `"${new Date(v.visit_end_time).toLocaleString()}"` : '',
                 `"${v.agent_name}"`,
                 v.agent_email,
                 v.visit_category || 'General',
