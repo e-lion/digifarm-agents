@@ -10,6 +10,7 @@ type BuyerInsert = Database['public']['Tables']['buyers']['Insert']
 
 export async function getActivityTypes(): Promise<string[]> {
   const supabase = await createClient()
+  await requireOrganization()
   
   const { data, error } = await supabase
     .from('activity_types')

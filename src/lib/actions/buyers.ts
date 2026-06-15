@@ -247,6 +247,8 @@ export async function getBuyersList(
 
 export async function getBuyerTypes(): Promise<string[]> {
   const supabase = await createClient()
+  const { user } = await getProfile()
+  if (!user) throw new Error('Unauthorized')
   
   const { data, error } = await supabase
     .from('buyer_types')
@@ -263,6 +265,8 @@ export async function getBuyerTypes(): Promise<string[]> {
 
 export async function getValueChains(): Promise<string[]> {
   const supabase = await createClient()
+  const { user } = await getProfile()
+  if (!user) throw new Error('Unauthorized')
   
   const { data, error } = await supabase
     .from('value_chains')
@@ -279,6 +283,9 @@ export async function getValueChains(): Promise<string[]> {
 
 export async function getContactDesignations() {
   const supabase = await createClient()
+  const { user } = await getProfile()
+  if (!user) throw new Error('Unauthorized')
+  
   const { data, error } = await supabase
     .from('contact_designations')
     .select('name')
@@ -294,6 +301,9 @@ export async function getContactDesignations() {
 
 export async function getBuyerContacts(buyerId: string) {
   const supabase = await createClient()
+  const { user } = await getProfile()
+  if (!user) throw new Error('Unauthorized')
+  
   const { data, error } = await supabase
     .from('buyer_contacts')
     .select('*')
